@@ -1,4 +1,6 @@
 {
+  "buildCommand": null,
+  "outputDirectory": null,
   "crons": [
     { "path": "/api/cron-morning",   "schedule": "0 12 * * 1-5" },
     { "path": "/api/cron-afternoon", "schedule": "0 20 * * 1-5" },
