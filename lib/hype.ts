@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — lib/hype.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 import { getEarningsCalendar, getEarningsHistory, getRecommendationTrends, getQuote } from "./finnhub";
 import type { CompanyHype, HypeRanking } from "./openrouter";
 

@@ -12,18 +12,20 @@
 
 ## Overview
 
-Quartly is a Telegram bot that delivers earnings data, financial analysis, and market intelligence for **S&P 500 companies** and **ETFs**. It automatically tracks your watchlist, sends reminders before earnings reports, and generates AI-powered analysis when companies publish their quarterly results.
+Quartly is a Telegram bot that delivers earnings data, financial analysis, and market intelligence for **S&P 500 companies**, **ETFs**, and **custom tickers** (TSM, ASML, SAP, NVO, SHOP). It automatically tracks your watchlist, sends reminders before earnings reports, and generates AI-powered analysis when companies publish their quarterly results.
 
 ### Key Features
 
 - **Watchlist Management** — Track up to 30 stocks and ETFs via Telegram inline search
+- **Custom Tickers** — Add non-S&P 500 stocks (TSM, ASML, SAP, NVO, SHOP) via the same inline search
 - **Earnings Reminders** — Automated alerts at 3 days, 1 day, and ~2 hours before reports
 - **AI-Powered Analysis** — Natural language earnings reports in Spanish, powered by Llama 4 via OpenRouter
 - **Hype Ranking** — Weekly ranking of upcoming earnings by potential (beat history + analyst sentiment + price momentum)
 - **Logo Support** — Company logos displayed alongside messages via Finnhub
-- **Price Tracking** — Current price, daily change, 52-week range for any tracked asset
+- **Price Tracking** — Current price, daily/weekly/monthly/yearly change, 52-week range (via Yahoo Finance)
 - **EPS History** — Last 4 quarters of earnings surprises (beat/miss) for stocks
-- **Analyst Signals** — Buy/Hold/Sell consensus from Finnhub recommendation trends
+- **Analyst Signals** — Buy/Hold/Sell consensus with percentages from Finnhub recommendation trends
+- **Inline Keyboard** — Remove button directly on the confirmation message for quick watchlist management
 
 ---
 
@@ -66,6 +68,14 @@ Quartly is a Telegram bot that delivers earnings data, financial analysis, and m
 └────────────────────────┘    └────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────┐
+│              Yahoo Finance (no API key)                  │
+│  • Real-time quote data                                  │
+│  • Historical candles (1 year)                           │
+│  • Calculates: 1d, 1w, 1m, 3m, 1y changes               │
+│  • 52-week high/low                                      │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
 │                   Vercel KV (Redis)                      │
 │  • stocks:{chatId} → string[]                           │
 │  • etfs:{chatId} → string[]                             │
@@ -79,10 +89,11 @@ Quartly is a Telegram bot that delivers earnings data, financial analysis, and m
 
 | Component | Technology |
 |---|---|
-| **Runtime** | Vercel Serverless Functions (Node.js 18+) |
+| **Runtime** | Vercel Serverless Functions (Node.js 20+) |
 | **Language** | TypeScript 5.x |
 | **Bot Framework** | Telegram Bot API (webhook-based) |
 | **Financial Data** | Finnhub API (free tier, 60 calls/min) |
+| **Price Data** | Yahoo Finance (yahoo-finance2, no API key) |
 | **AI Engine** | OpenRouter API — `meta-llama/llama-4-maverick:free` |
 | **Persistence** | Vercel KV (serverless Redis via @vercel/kv) |
 | **Scheduling** | Vercel Cron Jobs (3 daily, Mon-Fri) |
@@ -99,11 +110,13 @@ api/
   cron-evening.ts      ← 4:30 PM CST: AI analysis + weekly hype ranking
 lib/
   finnhub.ts           ← Finnhub API client (earnings, quotes, recommendations)
+  yahoo.ts             ← Yahoo Finance price data (historical + real-time)
   openrouter.ts        ← AI report generation with section-delimited parsing
-  telegram.ts          ← Message sending with logo/photo support
+  telegram.ts          ← Message sending with logo/photo + inline keyboard support
   kv.ts                ← Vercel KV operations (watchlists, users, reminders)
   sp500.ts             ← 500 S&P 500 companies (ticker, name, sector)
   etfs.ts              ← 36 ETFs across 6 categories
+  custom-tickers.ts    ← Non-S&P 500 tickers (TSM, ASML, SAP, NVO, SHOP)
   price.ts             ← Price block formatting (changes, 52-week range)
   quota.ts             ← Daily OpenRouter quota management (25/day limit)
   hype.ts              ← Hype ranking builder (surprise + analysts + momentum)
@@ -111,6 +124,14 @@ lib/
 vercel.json            ← Cron job schedule configuration
 .env                   ← Environment variables (not committed)
 ```
+
+---
+
+## License
+
+All source code in this repository is **Copyright (c) Donovan Riaño. All rights reserved.**
+
+Use, modification, or distribution of this code requires **prior written authorization** from the owner. Unauthorized use is prohibited.
 
 ---
 
@@ -124,6 +145,7 @@ vercel.json            ← Cron job schedule configuration
 | **Finnhub** | API key from finnhub.io | Free tier (60 calls/min) |
 | **OpenRouter** | API key from openrouter.ai | Free (llama-4-maverick:free) |
 | **Vercel** | Account for deployment + KV store | Free tier available |
+| **Yahoo Finance** | No account needed | Free (yahoo-finance2 library) |
 
 ### Environment Variables
 
@@ -215,10 +237,20 @@ Use **inline search** in any Telegram chat:
 @QuartlyBot AAPL
 @QuartlyBot Apple
 @QuartlyBot QQQ
-@QuartlyBot gold
+@QuartlyBot TSM
+@QuartlyBot ASML
 ```
 
-Results show `[TICKER] Company Name — Sector`. Tap a result to add it to your watchlist. You'll receive a confirmation message with current price, EPS history, analyst signal, and next earnings date.
+Results show `[TICKER] Company Name — Sector`. Tap a result to add it to your watchlist. You'll receive a confirmation message with:
+
+- Current price (from Yahoo Finance)
+- Price changes: 1 day, 1 week, 1 month, 3 months, 1 year
+- 52-week range
+- EPS history (last 4 quarters, stocks only)
+- Analyst signal with percentages
+- Next earnings date
+- Company logo (when available)
+- A **[🗑️ Eliminar de favoritos]** button for quick removal
 
 ### Commands
 
@@ -227,7 +259,7 @@ Results show `[TICKER] Company Name — Sector`. Tap a result to add it to your 
 | `/start` | Welcome message with bot explanation |
 | `/mystocks` | List your tracked stocks with remove buttons |
 | `/myetfs` | List your tracked ETFs with remove buttons |
-| `/report` | Generate an immediate AI analysis of your favorites that reported today |
+| `/report` | Generate an immediate analysis of your favorites (AI if quota available, otherwise raw data) |
 
 ### Automated Cron Jobs
 
@@ -251,10 +283,10 @@ Results show `[TICKER] Company Name — Sector`. Tap a result to add it to your 
 ### Inline Search Flow
 
 1. User types `@QuartlyBot <query>` in any Telegram chat
-2. Bot searches SP500 (by ticker and name) and ETFs (by ticker and name)
+2. Bot searches SP500, custom tickers, and ETFs (by ticker and name)
 3. Returns top 10 results as `InlineQueryResultArticle`
-4. When user selects a result, the text `QUARTLY_ADD_STOCK:TICKER` or `QUARTLY_ADD_ETF:TICKER` is sent to the bot
-5. Bot validates watchlist limit (30), adds to KV, fetches financial data, and sends a formatted message with logo
+4. When user selects a result, a marker text (`QUARTLY_ADD_STOCK:TICKER`, `QUARTLY_ADD_ETF:TICKER`, or `QUARTLY_ADD_CUSTOM:TICKER`) is sent to the bot
+5. Bot validates watchlist limit (30), adds to KV, fetches financial data from Yahoo Finance + Finnhub, and sends a formatted message with logo and inline keyboard remove button
 
 ### Earnings Reminder Flow
 
@@ -274,6 +306,13 @@ Results show `[TICKER] Company Name — Sector`. Tap a result to add it to your 
 7. Distributes individual company analyses to each user who tracks that stock (with logo)
 8. Sends hype ranking message to all users
 
+### Price Data Flow
+
+1. **Yahoo Finance** (primary) — `yahoo-finance2` fetches real-time quote + 1 year of historical daily candles
+2. Calculates percentage changes for 1w (5 trading days), 1m (21 days), 3m (63 days), 1y (252 days)
+3. **Finnhub** (fallback) — used for 52-week high/low and daily change if Yahoo fails
+4. Both sources are queried in parallel; Yahoo data takes priority
+
 ---
 
 <br><br>
@@ -292,18 +331,20 @@ Results show `[TICKER] Company Name — Sector`. Tap a result to add it to your 
 
 ## Descripción
 
-Quartly es un bot de Telegram que entrega datos de earnings, análisis financiero e inteligencia de mercado para **empresas del S&P 500** y **ETFs**. Rastrea automáticamente tu watchlist, envía recordatorios antes de los reportes trimestrales y genera análisis con IA cuando las empresas publican sus resultados.
+Quartly es un bot de Telegram que entrega datos de earnings, análisis financiero e inteligencia de mercado para **empresas del S&P 500**, **ETFs** y **tickers personalizados** (TSM, ASML, SAP, NVO, SHOP). Rastrea automáticamente tu watchlist, envía recordatorios antes de los reportes trimestrales y genera análisis con IA cuando las empresas publican sus resultados.
 
 ### Funcionalidades Principales
 
 - **Gestión de Watchlist** — Rastrea hasta 30 acciones y ETFs mediante búsqueda inline de Telegram
+- **Tickers Personalizados** — Agrega acciones fuera del S&P 500 (TSM, ASML, SAP, NVO, SHOP) con la misma búsqueda inline
 - **Recordatorios de Earnings** — Alertas automáticas a 3 días, 1 día y ~2 horas antes de reportes
 - **Análisis con IA** — Reportes de earnings en lenguaje natural en español, potenciados por Llama 4 vía OpenRouter
 - **Hype Ranking** — Ranking semanal de próximos earnings por potencial (historial de beats + sentimiento de analistas + momentum de precio)
 - **Soporte de Logos** — Logos de empresas mostrados junto a los mensajes vía Finnhub
-- **Seguimiento de Precios** — Precio actual, variación diaria, rango de 52 semanas
+- **Seguimiento de Precios** — Precio actual, variaciones (1d, 1s, 1m, 3m, 1a), rango de 52 semanas (vía Yahoo Finance)
 - **Historial EPS** — Últimos 4 trimestres de sorpresas de ganancias (beat/miss) para acciones
-- **Señal de Analistas** — Consenso Comprar/Mantener/Vender de Finnhub
+- **Señal de Analistas** — Consenso Comprar/Mantener/Vender con porcentajes de Finnhub
+- **Botón Inline** — Botón de eliminar directamente en el mensaje de confirmación
 
 ---
 
@@ -315,10 +356,11 @@ El bot opera completamente sin frontend, usando **Vercel Serverless Functions** 
 
 | Componente | Tecnología |
 |---|---|
-| **Runtime** | Vercel Serverless Functions (Node.js 18+) |
+| **Runtime** | Vercel Serverless Functions (Node.js 20+) |
 | **Lenguaje** | TypeScript 5.x |
 | **Bot** | Telegram Bot API (basado en webhook) |
 | **Datos Financieros** | Finnhub API (free tier, 60 llamadas/min) |
+| **Datos de Precio** | Yahoo Finance (yahoo-finance2, sin API key) |
 | **Motor de IA** | OpenRouter API — `meta-llama/llama-4-maverick:free` |
 | **Persistencia** | Vercel KV (Redis serverless vía @vercel/kv) |
 | **Programación** | Vercel Cron Jobs (3 diarios, Lun-Vie) |
@@ -335,16 +377,26 @@ api/
   cron-evening.ts      ← 4:30 PM CST: análisis con IA + hype ranking semanal
 lib/
   finnhub.ts           ← Cliente de Finnhub API (earnings, quotes, recomendaciones)
+  yahoo.ts             ← Datos de precio de Yahoo Finance (histórico + tiempo real)
   openrouter.ts        ← Generación de reportes con IA y parsing por delimitadores
-  telegram.ts          ← Envío de mensajes con soporte de logos/fotos
+  telegram.ts          ← Envío de mensajes con soporte de logos/fotos + botones inline
   kv.ts                ← Operaciones de Vercel KV (watchlists, usuarios, reminders)
   sp500.ts             ← 500 empresas del S&P 500 (ticker, nombre, sector)
   etfs.ts              ← 36 ETFs en 6 categorías
+  custom-tickers.ts    ← Tickers fuera del S&P 500 (TSM, ASML, SAP, NVO, SHOP)
   price.ts             ← Formato de bloques de precio (variaciones, rango 52 sem)
   quota.ts             ← Gestión de cuota diaria de OpenRouter (límite 25/día)
   hype.ts              ← Constructor de Hype Ranking (sorpresa + analistas + momentum)
   logo.ts              ← Resolución de logos (Finnhub para acciones, CDN para ETFs)
 ```
+
+---
+
+## Licencia
+
+Todo el código fuente en este repositorio es **Copyright (c) Donovan Riaño. Todos los derechos reservados.**
+
+El uso, modificación o distribución de este código requiere **autorización previa por escrito** del propietario. El uso no autorizado está prohibido.
 
 ---
 
@@ -358,6 +410,7 @@ lib/
 | **Finnhub** | API key de finnhub.io | Gratis (60 llamadas/min) |
 | **OpenRouter** | API key de openrouter.ai | Gratis (llama-4-maverick:free) |
 | **Vercel** | Cuenta para deploy + KV store | Gratis disponible |
+| **Yahoo Finance** | No requiere cuenta | Gratis (librería yahoo-finance2) |
 
 ### Variables de Entorno
 
@@ -449,10 +502,20 @@ Usa la **búsqueda inline** en cualquier chat de Telegram:
 @QuartlyBot AAPL
 @QuartlyBot Apple
 @QuartlyBot QQQ
-@QuartlyBot gold
+@QuartlyBot TSM
+@QuartlyBot ASML
 ```
 
-Los resultados muestran `[TICKER] Nombre de Empresa — Sector`. Toca un resultado para agregarlo a tu watchlist. Recibirás un mensaje de confirmación con precio actual, historial EPS, señal de analistas y próxima fecha de reporte.
+Los resultados muestran `[TICKER] Nombre de Empresa — Sector`. Toca un resultado para agregarlo a tu watchlist. Recibirás un mensaje de confirmación con:
+
+- Precio actual (de Yahoo Finance)
+- Variaciones: 1 día, 1 semana, 1 mes, 3 meses, 1 año
+- Rango de 52 semanas
+- Historial EPS (últimos 4 trimestres, solo acciones)
+- Señal de analistas con porcentajes
+- Próxima fecha de reporte
+- Logo de la empresa (cuando disponible)
+- Botón **[🗑️ Eliminar de favoritos]** para eliminación rápida
 
 ### Comandos
 
@@ -461,7 +524,7 @@ Los resultados muestran `[TICKER] Nombre de Empresa — Sector`. Toca un resulta
 | `/start` | Mensaje de bienvenida con explicación del bot |
 | `/mystocks` | Lista tus acciones rastreadas con botones de eliminar |
 | `/myetfs` | Lista tus ETFs rastreados con botones de eliminar |
-| `/report` | Genera un análisis inmediato con IA de tus favoritos que reportaron hoy |
+| `/report` | Genera un análisis inmediato de tus favoritos (IA si hay cuota, sino datos crudos) |
 
 ### Cron Jobs Automatizados
 
@@ -485,10 +548,10 @@ Los resultados muestran `[TICKER] Nombre de Empresa — Sector`. Toca un resulta
 ### Flujo de Búsqueda Inline
 
 1. El usuario escribe `@QuartlyBot <búsqueda>` en cualquier chat de Telegram
-2. El bot busca en SP500 (por ticker y nombre) y ETFs (por ticker y nombre)
+2. El bot busca en SP500, custom tickers y ETFs (por ticker y nombre)
 3. Devuelve los 10 mejores resultados como `InlineQueryResultArticle`
-4. Cuando el usuario selecciona un resultado, se envía al bot el texto `QUARTLY_ADD_STOCK:TICKER` o `QUARTLY_ADD_ETF:TICKER`
-5. El bot valida el límite de watchlist (30), agrega a KV, obtiene datos financieros y envía un mensaje formateado con logo
+4. Cuando el usuario selecciona un resultado, se envía al bot un texto marcador (`QUARTLY_ADD_STOCK:TICKER`, `QUARTLY_ADD_ETF:TICKER` o `QUARTLY_ADD_CUSTOM:TICKER`)
+5. El bot valida el límite de watchlist (30), agrega a KV, obtiene datos financieros de Yahoo Finance + Finnhub, y envía un mensaje formateado con logo y botón inline de eliminar
 
 ### Flujo de Recordatorios de Earnings
 
@@ -507,3 +570,10 @@ Los resultados muestran `[TICKER] Nombre de Empresa — Sector`. Toca un resulta
 6. Si hay cuota: envía batch a Llama 4 con system prompt estructurado, parsea respuesta usando delimitadores `---SECTION:TICKER---`
 7. Distribuye análisis individuales a cada usuario que rastrea esa acción (con logo)
 8. Envía mensaje de hype ranking a todos los usuarios
+
+### Flujo de Datos de Precio
+
+1. **Yahoo Finance** (primario) — `yahoo-finance2` obtiene cotización en tiempo real + 1 año de velas diarias históricas
+2. Calcula variaciones porcentuales para 1s (5 días hábiles), 1m (21 días), 3m (63 días), 1a (252 días)
+3. **Finnhub** (fallback) — usado para máximo/mínimo de 52 semanas y cambio diario si Yahoo falla
+4. Ambas fuentes se consultan en paralelo; los datos de Yahoo tienen prioridad

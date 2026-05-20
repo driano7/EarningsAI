@@ -1,12 +1,22 @@
+/*
+ * Quartly Bot — lib/telegram.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
 const BASE = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
-export async function sendMessage(chatId: string, text: string, parseMode = "Markdown"): Promise<boolean> {
+export async function sendMessage(chatId: string, text: string, parseMode = "Markdown", replyMarkup?: object): Promise<boolean> {
   try {
+    const body: Record<string, unknown> = { chat_id: chatId, text, parse_mode: parseMode, disable_web_page_preview: true };
+    if (replyMarkup) {
+      body.reply_markup = replyMarkup;
+    }
     const res = await fetch(`${BASE}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text, parse_mode: parseMode, disable_web_page_preview: true }),
+      body: JSON.stringify(body),
     });
     return res.ok;
   } catch {
@@ -14,18 +24,22 @@ export async function sendMessage(chatId: string, text: string, parseMode = "Mar
   }
 }
 
-export async function sendPhoto(chatId: string, photo: string, caption: string, parseMode = "Markdown"): Promise<boolean> {
+export async function sendPhoto(chatId: string, photo: string, caption: string, parseMode = "Markdown", replyMarkup?: object): Promise<boolean> {
   try {
+    const body: Record<string, unknown> = {
+      chat_id: chatId,
+      photo,
+      caption,
+      parse_mode: parseMode,
+      disable_web_page_preview: true,
+    };
+    if (replyMarkup) {
+      body.reply_markup = replyMarkup;
+    }
     const res = await fetch(`${BASE}/sendPhoto`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        photo,
-        caption,
-        parse_mode: parseMode,
-        disable_web_page_preview: true,
-      }),
+      body: JSON.stringify(body),
     });
     return res.ok;
   } catch {
@@ -35,16 +49,16 @@ export async function sendPhoto(chatId: string, photo: string, caption: string, 
 
 const CAPTION_LIMIT = 1024;
 
-export async function sendMessageWithLogo(chatId: string, text: string, logoUrl: string | null, parseMode = "Markdown"): Promise<boolean> {
+export async function sendMessageWithLogo(chatId: string, text: string, logoUrl: string | null, parseMode = "Markdown", replyMarkup?: object): Promise<boolean> {
   if (logoUrl) {
     if (text.length > CAPTION_LIMIT) {
       const truncated = text.substring(0, CAPTION_LIMIT - 30) + "\n[ver análisis completo abajo]";
       await sendPhoto(chatId, logoUrl, truncated, parseMode);
-      return sendMessage(chatId, text, parseMode);
+      return sendMessage(chatId, text, parseMode, replyMarkup);
     }
-    return sendPhoto(chatId, logoUrl, text, parseMode);
+    return sendPhoto(chatId, logoUrl, text, parseMode, replyMarkup);
   }
-  return sendMessage(chatId, text, parseMode);
+  return sendMessage(chatId, text, parseMode, replyMarkup);
 }
 
 export function answerInlineQuery(inlineQueryId: string, results: unknown[]): Promise<boolean> {

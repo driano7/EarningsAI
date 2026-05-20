@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — lib/kv.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 import { kv } from "@vercel/kv";
 
 const WATCHLIST_LIMIT = 30;

@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — lib/price.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 export interface PriceData {
   current: number;
   change1d: number | null;

@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — api/set-webhook.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 export default async function handler(_req: VercelRequest, res: VercelResponse) {

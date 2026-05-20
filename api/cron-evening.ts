@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — api/cron-evening.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { getAllUsers, getUserWatchlist } from "../lib/kv";
 import { getEarningsCalendar, getEarningsHistory, getRecommendationTrends, getQuote, formatEPSBlock, formatAnalystSignal } from "../lib/finnhub";

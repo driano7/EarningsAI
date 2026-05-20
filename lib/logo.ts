@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — lib/logo.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 const ETF_LOGOS: Record<string, string> = {
   SPY: "https://cdn.simpleicons.org/blackrock",
   QQQ: "https://cdn.simpleicons.org/invesco",

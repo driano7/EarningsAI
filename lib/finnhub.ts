@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — lib/finnhub.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 const BASE = "https://finnhub.io/api/v1";
 const TOKEN = process.env.FINNHUB_API_KEY || "";
 
@@ -117,8 +123,41 @@ export function formatAnalystSignal(recs: RecommendationTrend[]): string {
   const latest = recs[0];
   const total = latest.buy + latest.strongBuy + latest.hold + latest.sell + latest.strongSell;
   if (total === 0) return "🎯 Señal de analistas: Sin datos";
-  const buys = latest.buy + latest.strongBuy;
+  const strongBuys = latest.strongBuy;
+  const buys = latest.buy;
   const holds = latest.hold;
-  const sells = latest.sell + latest.strongSell;
-  return `🎯 Señal de analistas: ${buys} Comprar / ${holds} Mantener / ${sells} Vender`;
+  const sells = latest.sell;
+  const strongSells = latest.strongSell;
+  const pct = (n: number) => `${((n / total) * 100).toFixed(1)}%`;
+  const parts: string[] = [];
+  if (strongBuys > 0) parts.push(`${strongBuys} Comprar fuerte (${pct(strongBuys)})`);
+  if (buys > 0) parts.push(`${buys} Comprar (${pct(buys)})`);
+  if (holds > 0) parts.push(`${holds} Mantener (${pct(holds)})`);
+  if (sells > 0) parts.push(`${sells} Vender (${pct(sells)})`);
+  if (strongSells > 0) parts.push(`${strongSells} Vender fuerte (${pct(strongSells)})`);
+  if (parts.length === 0) return "🎯 Señal de analistas: Sin datos";
+  return `🎯 Señal de analistas: ${parts.join(" / ")}`;
+}
+
+export async function getCandles(ticker: string): Promise<{ closes: number[]; timestamps: number[] } | null> {
+  const to = Math.floor(Date.now() / 1000);
+  const from = to - 35 * 24 * 60 * 60;
+  const url = `${BASE}/stock/candle?symbol=${ticker}&resolution=D&from=${from}&to=${to}&token=${TOKEN}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = (await res.json()) as Record<string, unknown>;
+    if (!data || data.s !== "ok" || !data.c) return null;
+    return { closes: data.c as number[], timestamps: data.t as number[] };
+  } catch {
+    return null;
+  }
+}
+
+export function calcChange(closes: number[], daysBack: number): number | null {
+  if (closes.length < daysBack + 1) return null;
+  const current = closes[closes.length - 1];
+  const past = closes[closes.length - 1 - daysBack];
+  if (past === 0) return null;
+  return ((current - past) / past) * 100;
 }

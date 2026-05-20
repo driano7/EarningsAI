@@ -7,7 +7,8 @@
   },
   "dependencies": {
     "@vercel/kv": "^2.0.0",
-    "vercel": "^34.0.0"
+    "vercel": "^34.0.0",
+    "yahoo-finance2": "^3.14.1"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

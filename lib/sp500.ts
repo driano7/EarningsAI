@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — lib/sp500.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 export interface SP500Company {
   ticker: string;
   name: string;
