@@ -364,55 +364,96 @@ async function handleReport(chatId: string) {
     todayCalendar.filter((e) => allTickers.includes(e.symbol)).map((e) => e.symbol)
   );
 
+  // ─── Phase 1: collect CompanyData for ALL tickers reporting today ───────────
+  const earningsDataMap = new Map<string, { companyData: CompanyData; logoUrl: string }>();
+
   for (const ticker of allTickers) {
+    if (!reportingTodaySymbols.has(ticker)) continue;
+    const isEtf = etfs.includes(ticker);
+    const event = todayCalendar.find((e) => e.symbol === ticker)!;
+    const { name, sector } = resolveTickerInfo(ticker);
+
+    try {
+      const logoUrl = await getLogoUrl(ticker, isEtf);
+      const history = isEtf ? [] : await getEarningsHistory(ticker);
+      const recs = await getRecommendationTrends(ticker);
+      const quote = await getQuote(ticker);
+
+      const companyData: CompanyData = {
+        ticker, name, sector,
+        date: event.date,
+        hour: event.hour || "N/A",
+        epsEstimate: event.estimate,
+        epsActual: event.actual ?? null,
+        revenueEstimate: event.revenueEstimate ?? null,
+        surprisePercent: event.surprisePercent ?? null,
+        price: quote ? quote.c : null,
+        analystSignal: formatAnalystSignal(recs),
+        epsHistory: isEtf ? "N/A (ETF)" : formatEPSBlock(history),
+      };
+
+      earningsDataMap.set(ticker, { companyData, logoUrl });
+    } catch (err) {
+      console.error(`Error fetching data for ${ticker}:`, err);
+      await sendMessage(chatId, `⚠️ No se pudo cargar el reporte de *${ticker}*. Intenta de nuevo.`);
+    }
+
+    await sleep(1200);
+  }
+
+  // ─── Phase 2: single OpenRouter request for ALL reporting tickers ────────────
+  let aiReports: Record<string, string> = {};
+
+  if (earningsDataMap.size > 0) {
+    const quota = await checkAndConsumeQuota(1);
+    if (quota.allowed) {
+      try {
+        const allCompanyData = Array.from(earningsDataMap.values()).map((v) => v.companyData);
+        const batchResult = await generateBatchReport({ favReports: allCompanyData, hypeRanking: null });
+        aiReports = batchResult.favReports;
+      } catch (err) {
+        console.error("OpenRouter batch request failed:", err);
+      }
+    }
+  }
+
+  // ─── Phase 3: send one message per reporting ticker ──────────────────────────
+  for (const [ticker, { companyData, logoUrl }] of earningsDataMap) {
+    const analysis = aiReports[ticker];
+    const isEtf = etfs.includes(ticker);
+
+    if (analysis) {
+      await sendMessageWithLogo(chatId, analysis, logoUrl);
+    } else {
+      const event = todayCalendar.find((e) => e.symbol === ticker)!;
+      const rawMsg = buildRawEarningsMessage(
+        event,
+        companyData.name,
+        companyData.sector,
+        companyData.price !== null ? { c: companyData.price, dp: 0 } : null,
+        [],
+        [],
+        isEtf
+      );
+      await sendMessageWithLogo(chatId, rawMsg, logoUrl);
+    }
+
+    await sleep(1000);
+  }
+
+  // ─── Phase 4: non-reporting tickers (price cards) ────────────────────────────
+  for (const ticker of allTickers) {
+    if (reportingTodaySymbols.has(ticker)) continue;
     const isEtf = etfs.includes(ticker);
 
     try {
-      if (reportingTodaySymbols.has(ticker)) {
-        const event = todayCalendar.find((e) => e.symbol === ticker)!;
-        const { name, sector } = resolveTickerInfo(ticker);
-        const logoUrl = await getLogoUrl(ticker, isEtf);
-        const history = isEtf ? [] : await getEarningsHistory(ticker);
-        const recs = await getRecommendationTrends(ticker);
-        const quote = await getQuote(ticker);
-
-        const quota = await checkAndConsumeQuota(1);
-        if (quota.allowed) {
-          const companyData: CompanyData = {
-            ticker, name, sector,
-            date: event.date,
-            hour: event.hour || "N/A",
-            epsEstimate: event.estimate,
-            epsActual: event.actual ?? null,
-            revenueEstimate: event.revenueEstimate ?? null,
-            surprisePercent: event.surprisePercent ?? null,
-            price: quote ? quote.c : null,
-            analystSignal: formatAnalystSignal(recs),
-            epsHistory: isEtf ? "N/A (ETF)" : formatEPSBlock(history),
-          };
-          const report = await generateBatchReport({ favReports: [companyData], hypeRanking: null });
-          const analysis = report.favReports[ticker];
-          if (analysis) {
-            await sendMessageWithLogo(chatId, analysis, logoUrl);
-            await sleep(1000); // 1s between messages
-            continue;
-          }
-        }
-        const rawMsg = buildRawEarningsMessage(event, name, sector, quote, recs, history, isEtf);
-        await sendMessageWithLogo(chatId, rawMsg, logoUrl);
-        await sleep(1000);
-        continue;
-      }
-
       const { msg, logoUrl } = await buildTickerCard(ticker, isEtf, upcomingCalendar);
       await sendMessageWithLogo(chatId, msg, logoUrl);
-
     } catch (err) {
       console.error(`Error building card for ${ticker}:`, err);
       await sendMessage(chatId, `⚠️ No se pudo cargar el reporte de *${ticker}*. Intenta de nuevo.`);
     }
 
-    // 1.2s between tickers to stay under Finnhub's 60 req/min
     await sleep(1200);
   }
 
