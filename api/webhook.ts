@@ -38,10 +38,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const body = req.body;
   if (!body) return res.status(200).json({ ok: true });
 
-  // Respond 200 to Telegram immediately to avoid timeout (Telegram retries if no 200 within 5s)
+  // Respond 200 immediately so Telegram doesn't retry
   res.status(200).json({ ok: true });
 
-  // Process async after responding
   if (body.inline_query) {
     await handleInlineQuery(body.inline_query).catch(console.error);
     return;
@@ -129,25 +128,19 @@ async function handleChosenInlineResult(
   await registerUser(chatId);
 
   if (resultId.startsWith("stock_")) {
-    const ticker = resultId.replace("stock_", "");
-    return handleAddFromInline(chatId, ticker, false);
+    return handleAddFromInline(chatId, resultId.replace("stock_", ""), false);
   }
-
   if (resultId.startsWith("etf_")) {
-    const ticker = resultId.replace("etf_", "");
-    return handleAddFromInline(chatId, ticker, true);
+    return handleAddFromInline(chatId, resultId.replace("etf_", ""), true);
   }
-
   if (resultId.startsWith("custom_")) {
     const ticker = resultId.replace("custom_", "");
     const custom = CUSTOM_TICKERS.find((c) => c.ticker === ticker);
-    if (custom) {
-      return handleAddFromInline(chatId, ticker, custom.isEtf);
-    }
+    if (custom) return handleAddFromInline(chatId, ticker, custom.isEtf);
   }
 }
 
-async function handleCallback(cb: { id: string; data: string; message: { chat: { id: number }; text: string } }) {
+async function handleCallback(cb: { id: string; data: string; message: { chat: { id: number } } }) {
   const chatId = String(cb.message.chat.id);
   const [action, ticker] = cb.data.split(":");
 
@@ -167,27 +160,18 @@ async function handleCallback(cb: { id: string; data: string; message: { chat: {
 }
 
 function resolveTickerInfo(ticker: string): { name: string; sector: string } {
-  const spCompany = SP500.find((c) => c.ticker === ticker);
-  if (spCompany) return { name: spCompany.name, sector: spCompany.sector };
-
-  const etfObj = ETFS.find((e) => e.ticker === ticker);
-  if (etfObj) return { name: etfObj.name, sector: etfObj.category };
-
+  const sp = SP500.find((c) => c.ticker === ticker);
+  if (sp) return { name: sp.name, sector: sp.sector };
+  const etf = ETFS.find((e) => e.ticker === ticker);
+  if (etf) return { name: etf.name, sector: etf.category };
   const custom = CUSTOM_TICKERS.find((c) => c.ticker === ticker);
   if (custom) return { name: custom.name, sector: custom.sector };
-
   return { name: ticker, sector: "" };
 }
 
-async function handleAddFromInline(chatId: string, ticker: string, isEtf: boolean) {
-  const result = isEtf ? await addEtf(chatId, ticker) : await addStock(chatId, ticker);
-
-  if (!result.ok && result.error) {
-    await sendMessage(chatId, result.error);
-    return;
-  }
-
-  const { name, sector: sectorOrCategory } = resolveTickerInfo(ticker);
+// Builds a full ticker card: price variations + EPS history + analyst signal + next report date
+async function buildTickerCard(ticker: string, isEtf: boolean): Promise<{ msg: string; logoUrl: string }> {
+  const { name, sector } = resolveTickerInfo(ticker);
 
   const [quote, recs, history, logoUrl, yahooData] = await Promise.all([
     getQuote(ticker),
@@ -204,34 +188,44 @@ async function handleAddFromInline(chatId: string, ticker: string, isEtf: boolea
     change1m: yahooData?.change1m ?? null,
     change3m: yahooData?.change3m ?? null,
     change1y: yahooData?.change1y ?? null,
-    high52w: yahooData?.high52w ?? quote?.h ?? null,
-    low52w: yahooData?.low52w ?? quote?.l ?? null,
+    high52w: yahooData?.high52w ?? null,
+    low52w: yahooData?.low52w ?? null,
   };
 
-  const msg = formatPriceBlock(ticker, name, sectorOrCategory, priceData);
-
-  let fullMsg = msg;
+  let msg = formatPriceBlock(ticker, name, sector, priceData);
 
   if (isEtf) {
     const analystSignal = formatAnalystSignal(recs);
-    fullMsg += `\n\n${analystSignal}\n📊 ETF — sin reportes de earnings`;
+    msg += `\n\n${analystSignal}\n📊 ETF — sin reportes de earnings`;
   } else {
     const epsBlock = formatEPSBlock(history);
     const analystSignal = formatAnalystSignal(recs);
 
     const today = new Date().toISOString().split("T")[0];
     const future = new Date();
-    future.setDate(future.getDate() + 7);
+    future.setDate(future.getDate() + 90);
     const calendar = await getEarningsCalendar(today, future.toISOString().split("T")[0]);
     const upcoming = calendar.find((e) => e.symbol === ticker);
     const nextReport = upcoming
-      ? `📅 Próximo reporte estimado: ${upcoming.date} (${upcoming.hour || "N/A"})`
+      ? `📅 Próximo reporte: ${upcoming.date} (${upcoming.hour || "N/A"})`
       : "📅 Próximo reporte: Sin fecha confirmada";
 
-    fullMsg += `\n\n${epsBlock ? epsBlock + "\n" : ""}${analystSignal}\n${nextReport}`;
+    msg += `\n\n${epsBlock ? epsBlock + "\n\n" : ""}${analystSignal}\n${nextReport}`;
   }
 
-  fullMsg += `\n\n✅ *${ticker}* agregado a tus favoritos`;
+  return { msg, logoUrl };
+}
+
+async function handleAddFromInline(chatId: string, ticker: string, isEtf: boolean) {
+  const result = isEtf ? await addEtf(chatId, ticker) : await addStock(chatId, ticker);
+
+  if (!result.ok && result.error) {
+    await sendMessage(chatId, result.error);
+    return;
+  }
+
+  const { msg, logoUrl } = await buildTickerCard(ticker, isEtf);
+  const fullMsg = msg + `\n\n✅ *${ticker}* agregado a tus favoritos`;
 
   const removeBtn = isEtf ? `remove_etf:${ticker}` : `remove_stock:${ticker}`;
   const replyMarkup = {
@@ -246,27 +240,21 @@ async function handleMessage(message: { chat: { id: number; first_name?: string 
   const text = (message.text || "").trim();
 
   if (text.startsWith("QUARTLY_ADD_STOCK:")) {
-    const ticker = text.replace("QUARTLY_ADD_STOCK:", "");
-    return handleAddFromInline(chatId, ticker, false);
+    return handleAddFromInline(chatId, text.replace("QUARTLY_ADD_STOCK:", ""), false);
   }
-
   if (text.startsWith("QUARTLY_ADD_ETF:")) {
-    const ticker = text.replace("QUARTLY_ADD_ETF:", "");
-    return handleAddFromInline(chatId, ticker, true);
+    return handleAddFromInline(chatId, text.replace("QUARTLY_ADD_ETF:", ""), true);
   }
-
   if (text.startsWith("QUARTLY_ADD_CUSTOM:")) {
     const ticker = text.replace("QUARTLY_ADD_CUSTOM:", "");
     const custom = CUSTOM_TICKERS.find((c) => c.ticker === ticker);
-    if (custom) {
-      return handleAddFromInline(chatId, ticker, custom.isEtf);
-    }
+    if (custom) return handleAddFromInline(chatId, ticker, custom.isEtf);
     return;
   }
 
-  const normalizedText = text.split("@")[0].trim();
+  const cmd = text.split("@")[0].trim();
 
-  if (normalizedText === "/start") {
+  if (cmd === "/start") {
     await registerUser(chatId);
     const name = message.chat.first_name || "inversor";
     const welcome = `¡Hola ${name}! 👋 Soy *Quartly*, tu asistente de earnings e información financiera para el S\\&P 500 y ETFs\\.
@@ -284,22 +272,14 @@ Escribe ${BOT_USERNAME} y el ticker o nombre de la empresa/ETF en cualquier chat
 /start — Bienvenida y cómo usar Quartly
 /mystocks — Ver y eliminar acciones de tu watchlist
 /myetfs — Ver y eliminar ETFs de tu watchlist
-/report — Reporte manual de tus favoritos ahora`;
+/report — Reporte completo de cada activo en tu watchlist`;
     await sendMessage(chatId, welcome);
     return;
   }
 
-  if (normalizedText === "/mystocks") {
-    return handleMyStocks(chatId);
-  }
-
-  if (normalizedText === "/myetfs") {
-    return handleMyEtfs(chatId);
-  }
-
-  if (normalizedText === "/report") {
-    return handleReport(chatId);
-  }
+  if (cmd === "/mystocks") return handleMyStocks(chatId);
+  if (cmd === "/myetfs") return handleMyEtfs(chatId);
+  if (cmd === "/report") return handleReport(chatId);
 }
 
 async function handleMyStocks(chatId: string) {
@@ -318,11 +298,9 @@ async function handleMyStocks(chatId: string) {
     msg += `• *${ticker}* — ${name} (${sector})\n`;
   }
 
-  const inlineKeyboard = stocks.map((ticker) => ({ text: `🗑️ ${ticker}`, callback_data: `remove_stock:${ticker}` }));
   const buttons: Array<Array<{ text: string; callback_data: string }>> = [];
-  for (let i = 0; i < inlineKeyboard.length; i += 2) {
-    buttons.push(inlineKeyboard.slice(i, i + 2));
-  }
+  const kb = stocks.map((t) => ({ text: `🗑️ ${t}`, callback_data: `remove_stock:${t}` }));
+  for (let i = 0; i < kb.length; i += 2) buttons.push(kb.slice(i, i + 2));
 
   await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
     method: "POST",
@@ -352,11 +330,9 @@ async function handleMyEtfs(chatId: string) {
     msg += `• *${ticker}* — ${name} (${category})\n`;
   }
 
-  const inlineKeyboard = etfs.map((ticker) => ({ text: `🗑️ ${ticker}`, callback_data: `remove_etf:${ticker}` }));
   const buttons: Array<Array<{ text: string; callback_data: string }>> = [];
-  for (let i = 0; i < inlineKeyboard.length; i += 2) {
-    buttons.push(inlineKeyboard.slice(i, i + 2));
-  }
+  const kb = etfs.map((t) => ({ text: `🗑️ ${t}`, callback_data: `remove_etf:${t}` }));
+  for (let i = 0; i < kb.length; i += 2) buttons.push(kb.slice(i, i + 2));
 
   await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
     method: "POST",
@@ -380,81 +356,58 @@ async function handleReport(chatId: string) {
     return;
   }
 
+  // Check which tickers from watchlist are reporting today
   const today = new Date().toISOString().split("T")[0];
   const calendar = await getEarningsCalendar(today, today);
-  const reportingToday = calendar.filter((e) => allTickers.includes(e.symbol));
+  const reportingTodaySymbols = new Set(calendar.filter((e) => allTickers.includes(e.symbol)).map((e) => e.symbol));
 
-  if (reportingToday.length === 0) {
-    for (const ticker of allTickers) {
-      const isEtf = etfs.includes(ticker);
+  // Send one full card per ticker, sequentially to avoid rate limits
+  for (const ticker of allTickers) {
+    const isEtf = etfs.includes(ticker);
+
+    // If reporting today, use AI analysis (or raw fallback)
+    if (reportingTodaySymbols.has(ticker)) {
+      const event = calendar.find((e) => e.symbol === ticker)!;
       const { name, sector } = resolveTickerInfo(ticker);
-      const [recs, logoUrl, yahooData, quote] = await Promise.all([
+      const logoUrl = await getLogoUrl(ticker, isEtf);
+      const [history, recs, quote] = await Promise.all([
+        isEtf ? Promise.resolve([]) : getEarningsHistory(ticker),
         getRecommendationTrends(ticker),
-        getLogoUrl(ticker, isEtf),
-        getYahooPriceDataFull(ticker),
         getQuote(ticker),
       ]);
 
-      const priceData: PriceData = {
-        current: yahooData?.current ?? quote?.c ?? 0,
-        change1d: yahooData?.change1d ?? quote?.dp ?? null,
-        change1w: yahooData?.change1w ?? null,
-        change1m: yahooData?.change1m ?? null,
-        change3m: yahooData?.change3m ?? null,
-        change1y: yahooData?.change1y ?? null,
-        high52w: yahooData?.high52w ?? quote?.h ?? null,
-        low52w: yahooData?.low52w ?? quote?.l ?? null,
-      };
-
-      const msg = formatPriceBlock(ticker, name, sector, priceData);
-      const signal = formatAnalystSignal(recs);
-      const fullMsg = `${msg}\n\n${signal}`;
-      await sendMessageWithLogo(chatId, fullMsg, logoUrl);
-    }
-    return;
-  }
-
-  for (const event of reportingToday) {
-    const isEtf = etfs.includes(event.symbol);
-    const { name, sector } = resolveTickerInfo(event.symbol);
-    const logoUrl = await getLogoUrl(event.symbol, isEtf);
-
-    const [history, recs, quote] = await Promise.all([
-      isEtf ? Promise.resolve([]) : getEarningsHistory(event.symbol),
-      getRecommendationTrends(event.symbol),
-      getQuote(event.symbol),
-    ]);
-
-    const quota = await checkAndConsumeQuota(1);
-
-    if (quota.allowed) {
-      const companyData: CompanyData = {
-        ticker: event.symbol,
-        name,
-        sector,
-        date: event.date,
-        hour: event.hour || "N/A",
-        epsEstimate: event.estimate,
-        epsActual: event.actual ?? null,
-        revenueEstimate: event.revenueEstimate ?? null,
-        surprisePercent: event.surprisePercent ?? null,
-        price: quote ? quote.c : null,
-        analystSignal: formatAnalystSignal(recs),
-        epsHistory: isEtf ? "N/A (ETF)" : formatEPSBlock(history),
-      };
-
-      const report = await generateBatchReport({ favReports: [companyData], hypeRanking: null });
-      const analysis = report.favReports[event.symbol];
-      if (analysis) {
-        await sendMessageWithLogo(chatId, analysis, logoUrl);
-      } else {
-        const rawMsg = buildRawEarningsMessage(event, name, sector, quote, recs, history, isEtf);
-        await sendMessageWithLogo(chatId, rawMsg, logoUrl);
+      const quota = await checkAndConsumeQuota(1);
+      if (quota.allowed) {
+        const companyData: CompanyData = {
+          ticker,
+          name,
+          sector,
+          date: event.date,
+          hour: event.hour || "N/A",
+          epsEstimate: event.estimate,
+          epsActual: event.actual ?? null,
+          revenueEstimate: event.revenueEstimate ?? null,
+          surprisePercent: event.surprisePercent ?? null,
+          price: quote ? quote.c : null,
+          analystSignal: formatAnalystSignal(recs),
+          epsHistory: isEtf ? "N/A (ETF)" : formatEPSBlock(history),
+        };
+        const report = await generateBatchReport({ favReports: [companyData], hypeRanking: null });
+        const analysis = report.favReports[ticker];
+        if (analysis) {
+          await sendMessageWithLogo(chatId, analysis, logoUrl);
+          continue;
+        }
       }
-    } else {
+      // Fallback to raw message if AI quota exceeded
       const rawMsg = buildRawEarningsMessage(event, name, sector, quote, recs, history, isEtf);
       await sendMessageWithLogo(chatId, rawMsg, logoUrl);
+      continue;
     }
+
+    // Normal day: full ticker card (price + EPS history + analyst + next report date)
+    const { msg, logoUrl } = await buildTickerCard(ticker, isEtf);
+    await sendMessageWithLogo(chatId, msg, logoUrl);
   }
 
   const remaining = await getRemainingQuota();
@@ -464,7 +417,7 @@ async function handleReport(chatId: string) {
 }
 
 function buildRawEarningsMessage(
-  event: { symbol: string; name?: string; date: string; hour?: string; estimate: number; actual?: number | null; revenueEstimate?: number | null; surprisePercent?: number | null },
+  event: { symbol: string; date: string; hour?: string; estimate: number; actual?: number | null; revenueEstimate?: number | null; surprisePercent?: number | null },
   name: string,
   sector: string,
   quote: { c: number; dp: number } | null,
@@ -472,8 +425,8 @@ function buildRawEarningsMessage(
   history: unknown[],
   isEtf: boolean
 ): string {
-  const epsActual = event.actual !== null && event.actual !== undefined ? `$${event.actual.toFixed(2)}` : "N/A";
-  const surprise = event.surprisePercent !== null && event.surprisePercent !== undefined
+  const epsActual = event.actual != null ? `$${event.actual.toFixed(2)}` : "N/A";
+  const surprise = event.surprisePercent != null
     ? `${event.surprisePercent >= 0 ? "+" : ""}${event.surprisePercent.toFixed(1)}%`
     : "N/A";
   const priceText = quote ? `Precio: $${quote.c.toFixed(2)} (${quote.dp >= 0 ? "+" : ""}${quote.dp.toFixed(2)}%)` : "Precio: N/A";
