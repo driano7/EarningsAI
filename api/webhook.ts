@@ -169,8 +169,12 @@ function resolveTickerInfo(ticker: string): { name: string; sector: string } {
   return { name: ticker, sector: "" };
 }
 
-// Builds a full ticker card: price variations + EPS history + analyst signal + next report date
-async function buildTickerCard(ticker: string, isEtf: boolean): Promise<{ msg: string; logoUrl: string }> {
+// Builds a full ticker card. upcomingCalendar is pre-fetched outside the loop.
+async function buildTickerCard(
+  ticker: string,
+  isEtf: boolean,
+  upcomingCalendar: Array<{ symbol: string; date: string; hour?: string }>
+): Promise<{ msg: string; logoUrl: string }> {
   const { name, sector } = resolveTickerInfo(ticker);
 
   const [quote, recs, history, logoUrl, yahooData] = await Promise.all([
@@ -183,7 +187,7 @@ async function buildTickerCard(ticker: string, isEtf: boolean): Promise<{ msg: s
 
   const priceData: PriceData = {
     current: yahooData?.current ?? quote?.c ?? 0,
-    change1d: yahooData?.change1d ?? quote?.dp ?? null,
+    change1d: yahooData?.change1d ?? (typeof quote?.dp === "number" ? quote.dp : null),
     change1w: yahooData?.change1w ?? null,
     change1m: yahooData?.change1m ?? null,
     change3m: yahooData?.change3m ?? null,
@@ -200,16 +204,10 @@ async function buildTickerCard(ticker: string, isEtf: boolean): Promise<{ msg: s
   } else {
     const epsBlock = formatEPSBlock(history);
     const analystSignal = formatAnalystSignal(recs);
-
-    const today = new Date().toISOString().split("T")[0];
-    const future = new Date();
-    future.setDate(future.getDate() + 90);
-    const calendar = await getEarningsCalendar(today, future.toISOString().split("T")[0]);
-    const upcoming = calendar.find((e) => e.symbol === ticker);
+    const upcoming = upcomingCalendar.find((e) => e.symbol === ticker);
     const nextReport = upcoming
       ? `📅 Próximo reporte: ${upcoming.date} (${upcoming.hour || "N/A"})`
       : "📅 Próximo reporte: Sin fecha confirmada";
-
     msg += `\n\n${epsBlock ? epsBlock + "\n\n" : ""}${analystSignal}\n${nextReport}`;
   }
 
@@ -224,7 +222,13 @@ async function handleAddFromInline(chatId: string, ticker: string, isEtf: boolea
     return;
   }
 
-  const { msg, logoUrl } = await buildTickerCard(ticker, isEtf);
+  // For inline add, fetch next 90d calendar just for this one ticker
+  const today = new Date().toISOString().split("T")[0];
+  const future = new Date();
+  future.setDate(future.getDate() + 90);
+  const calendar = await getEarningsCalendar(today, future.toISOString().split("T")[0]);
+
+  const { msg, logoUrl } = await buildTickerCard(ticker, isEtf, calendar);
   const fullMsg = msg + `\n\n✅ *${ticker}* agregado a tus favoritos`;
 
   const removeBtn = isEtf ? `remove_etf:${ticker}` : `remove_stock:${ticker}`;
@@ -356,58 +360,74 @@ async function handleReport(chatId: string) {
     return;
   }
 
-  // Check which tickers from watchlist are reporting today
+  // Fetch both calendars ONCE outside the loop
   const today = new Date().toISOString().split("T")[0];
-  const calendar = await getEarningsCalendar(today, today);
-  const reportingTodaySymbols = new Set(calendar.filter((e) => allTickers.includes(e.symbol)).map((e) => e.symbol));
+  const future = new Date();
+  future.setDate(future.getDate() + 90);
 
-  // Send one full card per ticker, sequentially to avoid rate limits
+  const [todayCalendar, upcomingCalendar] = await Promise.all([
+    getEarningsCalendar(today, today),
+    getEarningsCalendar(today, future.toISOString().split("T")[0]),
+  ]);
+
+  const reportingTodaySymbols = new Set(
+    todayCalendar.filter((e) => allTickers.includes(e.symbol)).map((e) => e.symbol)
+  );
+
+  // Send one full card per ticker, sequentially
   for (const ticker of allTickers) {
     const isEtf = etfs.includes(ticker);
 
-    // If reporting today, use AI analysis (or raw fallback)
-    if (reportingTodaySymbols.has(ticker)) {
-      const event = calendar.find((e) => e.symbol === ticker)!;
-      const { name, sector } = resolveTickerInfo(ticker);
-      const logoUrl = await getLogoUrl(ticker, isEtf);
-      const [history, recs, quote] = await Promise.all([
-        isEtf ? Promise.resolve([]) : getEarningsHistory(ticker),
-        getRecommendationTrends(ticker),
-        getQuote(ticker),
-      ]);
+    try {
+      // If reporting today, use AI analysis (or raw fallback)
+      if (reportingTodaySymbols.has(ticker)) {
+        const event = todayCalendar.find((e) => e.symbol === ticker)!;
+        const { name, sector } = resolveTickerInfo(ticker);
+        const logoUrl = await getLogoUrl(ticker, isEtf);
+        const [history, recs, quote] = await Promise.all([
+          isEtf ? Promise.resolve([]) : getEarningsHistory(ticker),
+          getRecommendationTrends(ticker),
+          getQuote(ticker),
+        ]);
 
-      const quota = await checkAndConsumeQuota(1);
-      if (quota.allowed) {
-        const companyData: CompanyData = {
-          ticker,
-          name,
-          sector,
-          date: event.date,
-          hour: event.hour || "N/A",
-          epsEstimate: event.estimate,
-          epsActual: event.actual ?? null,
-          revenueEstimate: event.revenueEstimate ?? null,
-          surprisePercent: event.surprisePercent ?? null,
-          price: quote ? quote.c : null,
-          analystSignal: formatAnalystSignal(recs),
-          epsHistory: isEtf ? "N/A (ETF)" : formatEPSBlock(history),
-        };
-        const report = await generateBatchReport({ favReports: [companyData], hypeRanking: null });
-        const analysis = report.favReports[ticker];
-        if (analysis) {
-          await sendMessageWithLogo(chatId, analysis, logoUrl);
-          continue;
+        const quota = await checkAndConsumeQuota(1);
+        if (quota.allowed) {
+          const companyData: CompanyData = {
+            ticker,
+            name,
+            sector,
+            date: event.date,
+            hour: event.hour || "N/A",
+            epsEstimate: event.estimate,
+            epsActual: event.actual ?? null,
+            revenueEstimate: event.revenueEstimate ?? null,
+            surprisePercent: event.surprisePercent ?? null,
+            price: quote ? quote.c : null,
+            analystSignal: formatAnalystSignal(recs),
+            epsHistory: isEtf ? "N/A (ETF)" : formatEPSBlock(history),
+          };
+          const report = await generateBatchReport({ favReports: [companyData], hypeRanking: null });
+          const analysis = report.favReports[ticker];
+          if (analysis) {
+            await sendMessageWithLogo(chatId, analysis, logoUrl);
+            continue;
+          }
         }
+        // Fallback to raw message if AI quota exceeded
+        const rawMsg = buildRawEarningsMessage(event, name, sector, quote, recs, history, isEtf);
+        await sendMessageWithLogo(chatId, rawMsg, logoUrl);
+        continue;
       }
-      // Fallback to raw message if AI quota exceeded
-      const rawMsg = buildRawEarningsMessage(event, name, sector, quote, recs, history, isEtf);
-      await sendMessageWithLogo(chatId, rawMsg, logoUrl);
-      continue;
-    }
 
-    // Normal day: full ticker card (price + EPS history + analyst + next report date)
-    const { msg, logoUrl } = await buildTickerCard(ticker, isEtf);
-    await sendMessageWithLogo(chatId, msg, logoUrl);
+      // Normal day: full ticker card using pre-fetched upcoming calendar
+      const { msg, logoUrl } = await buildTickerCard(ticker, isEtf, upcomingCalendar);
+      await sendMessageWithLogo(chatId, msg, logoUrl);
+
+    } catch (err) {
+      console.error(`Error building card for ${ticker}:`, err);
+      // Send a minimal fallback so the user knows this ticker failed
+      await sendMessage(chatId, `⚠️ No se pudo cargar el reporte de *${ticker}*. Intenta de nuevo.`);
+    }
   }
 
   const remaining = await getRemainingQuota();
