@@ -123,20 +123,18 @@ export function formatAnalystSignal(recs: RecommendationTrend[]): string {
   const latest = recs[0];
   const total = latest.buy + latest.strongBuy + latest.hold + latest.sell + latest.strongSell;
   if (total === 0) return "🎯 Señal de analistas: Sin datos";
-  const strongBuys = latest.strongBuy;
-  const buys = latest.buy;
-  const holds = latest.hold;
-  const sells = latest.sell;
-  const strongSells = latest.strongSell;
+
   const pct = (n: number) => `${((n / total) * 100).toFixed(1)}%`;
-  const parts: string[] = [];
-  if (strongBuys > 0) parts.push(`${strongBuys} Comprar fuerte (${pct(strongBuys)})`);
-  if (buys > 0) parts.push(`${buys} Comprar (${pct(buys)})`);
-  if (holds > 0) parts.push(`${holds} Mantener (${pct(holds)})`);
-  if (sells > 0) parts.push(`${sells} Vender (${pct(sells)})`);
-  if (strongSells > 0) parts.push(`${strongSells} Vender fuerte (${pct(strongSells)})`);
-  if (parts.length === 0) return "🎯 Señal de analistas: Sin datos";
-  return `🎯 Señal de analistas: ${parts.join(" / ")}`;
+
+  const parts = [
+    `🟢 Comprar fuerte: ${latest.strongBuy} (${pct(latest.strongBuy)})`,
+    `🟢 Comprar: ${latest.buy} (${pct(latest.buy)})`,
+    `⚪ Mantener: ${latest.hold} (${pct(latest.hold)})`,
+    `🔴 Vender: ${latest.sell} (${pct(latest.sell)})`,
+    `🔴 Vender fuerte: ${latest.strongSell} (${pct(latest.strongSell)})`,
+  ];
+
+  return `🎯 Analistas (${total} en total):\n${parts.join(" / ")}`;
 }
 
 export async function getCandles(ticker: string): Promise<{ closes: number[]; timestamps: number[] } | null> {
