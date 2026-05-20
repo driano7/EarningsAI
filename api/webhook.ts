@@ -489,7 +489,7 @@ function buildRawEarningsMessage(
 
   return `📊 *${event.symbol}* — ${name} (${sector})
 Fecha: ${event.date} (${event.hour || "N/A"})
-EPS Est: $${event.estimate.toFixed(2)} | EPS Real: ${epsActual}
+EPS Est: $${event.estimate != null ? event.estimate.toFixed(2) : 'N/A'} | EPS Real: ${epsActual}
 Surprise: ${surprise}
 ${priceText}
 ${signal}
