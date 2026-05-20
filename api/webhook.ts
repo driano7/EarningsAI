@@ -9,6 +9,8 @@ import { checkAndConsumeQuota, getQuotaExceededMessage } from "../lib/quota";
 import { generateBatchReport, CompanyData } from "../lib/openrouter";
 import { formatPriceBlock, PriceData } from "../lib/price";
 
+const BOT_USERNAME = "@earningsinfoaibot";
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "GET") {
     return res.status(200).json({ ok: true, message: "Quartly webhook is running" });
@@ -183,7 +185,7 @@ async function handleMessage(res: VercelResponse, message: { chat: { id: number;
 • Ranking semanal de hype de earnings
 
 🔍 *Cómo agregar activos:*
-Escribe @QuartlyBot y el ticker o nombre de la empresa/ETF en cualquier chat\\. Selecciona el resultado para agregarlo a tu watchlist\\.
+Escribe ${BOT_USERNAME} y el ticker o nombre de la empresa/ETF en cualquier chat\\. Selecciona el resultado para agregarlo a tu watchlist\\.
 
 📋 *Comandos disponibles:*
 /start — Bienvenida y cómo usar Quartly
@@ -212,16 +214,16 @@ Escribe @QuartlyBot y el ticker o nombre de la empresa/ETF en cualquier chat\\. 
 async function handleMyStocks(res: VercelResponse, chatId: string) {
   const stocks = await getUserStocks(chatId);
   if (stocks.length === 0) {
-    await sendMessage(chatId, "📋 No tienes acciones en tu watchlist\\. Usa @QuartlyBot para agregar\\.");
+    await sendMessage(chatId, `📋 No tienes acciones en tu watchlist\\. Usa ${BOT_USERNAME} para agregar\\.`);
     return res.status(200).json({ ok: true });
   }
 
-  let msg = "📋 *Tus acciones:*\\n\\n";
+  let msg = "📋 *Tus acciones:*\n\n";
   for (const ticker of stocks) {
     const company = SP500.find((c) => c.ticker === ticker);
     const name = company ? company.name : ticker;
     const sector = company ? company.sector : "";
-    msg += `• *${ticker}* — ${name} (${sector})\n  [🗑️ Eliminar](https://t.me/QuartlyBot?start=remove_stock_${ticker})\\n\\n`;
+    msg += `• *${ticker}* — ${name} (${sector})\n`;
   }
 
   const inlineKeyboard = stocks.map((ticker) => ({ text: `🗑️ ${ticker}`, callback_data: `remove_stock:${ticker}` }));
@@ -248,16 +250,16 @@ async function handleMyStocks(res: VercelResponse, chatId: string) {
 async function handleMyEtfs(res: VercelResponse, chatId: string) {
   const etfs = await getUserEtfs(chatId);
   if (etfs.length === 0) {
-    await sendMessage(chatId, "📋 No tienes ETFs en tu watchlist\\. Usa @QuartlyBot para agregar\\.");
+    await sendMessage(chatId, `📋 No tienes ETFs en tu watchlist\\. Usa ${BOT_USERNAME} para agregar\\.`);
     return res.status(200).json({ ok: true });
   }
 
-  let msg = "📋 *Tus ETFs:*\\n\\n";
+  let msg = "📋 *Tus ETFs:*\n\n";
   for (const ticker of etfs) {
     const etf = ETFS.find((e) => e.ticker === ticker);
     const name = etf ? etf.name : ticker;
     const category = etf ? etf.category : "";
-    msg += `• *${ticker}* — ${name} (${category})\n  [🗑️ Eliminar](https://t.me/QuartlyBot?start=remove_etf_${ticker})\\n\\n`;
+    msg += `• *${ticker}* — ${name} (${category})\n`;
   }
 
   const inlineKeyboard = etfs.map((ticker) => ({ text: `🗑️ ${ticker}`, callback_data: `remove_etf:${ticker}` }));
@@ -286,7 +288,7 @@ async function handleReport(res: VercelResponse, chatId: string) {
   const allTickers = [...stocks, ...etfs];
 
   if (allTickers.length === 0) {
-    await sendMessage(chatId, "No tienes activos en tu watchlist\\. Usa @QuartlyBot para agregar\\.");
+    await sendMessage(chatId, `No tienes activos en tu watchlist\\. Usa ${BOT_USERNAME} para agregar\\.`);
     return res.status(200).json({ ok: true });
   }
 
