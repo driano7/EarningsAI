@@ -38,30 +38,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const body = req.body;
   if (!body) return res.status(200).json({ ok: true });
 
+  // Respond 200 to Telegram immediately to avoid timeout (Telegram retries if no 200 within 5s)
+  res.status(200).json({ ok: true });
+
+  // Process async after responding
   if (body.inline_query) {
-    return handleInlineQuery(res, body.inline_query);
+    await handleInlineQuery(body.inline_query).catch(console.error);
+    return;
   }
 
   if (body.chosen_inline_result) {
-    return handleChosenInlineResult(res, body.chosen_inline_result);
+    await handleChosenInlineResult(body.chosen_inline_result).catch(console.error);
+    return;
   }
 
   if (body.callback_query) {
-    return handleCallback(res, body.callback_query);
+    await handleCallback(body.callback_query).catch(console.error);
+    return;
   }
 
   if (body.message) {
-    return handleMessage(res, body.message);
+    await handleMessage(body.message).catch(console.error);
+    return;
   }
-
-  return res.status(200).json({ ok: true });
 }
 
-async function handleInlineQuery(res: VercelResponse, query: { id: string; query: string; from: { id: number } }) {
+async function handleInlineQuery(query: { id: string; query: string; from: { id: number } }) {
   const searchText = (query.query || "").trim().toUpperCase();
-  if (!searchText) {
-    return res.status(200).json({ ok: true });
-  }
+  if (!searchText) return;
 
   const results: Array<{
     type: string;
@@ -114,11 +118,9 @@ async function handleInlineQuery(res: VercelResponse, query: { id: string; query
   }
 
   await answerInlineQuery(query.id, results);
-  return res.status(200).json({ ok: true });
 }
 
 async function handleChosenInlineResult(
-  res: VercelResponse,
   chosen: { result_id: string; from: { id: number }; query: string }
 ) {
   const chatId = String(chosen.from.id);
@@ -128,26 +130,24 @@ async function handleChosenInlineResult(
 
   if (resultId.startsWith("stock_")) {
     const ticker = resultId.replace("stock_", "");
-    return handleAddFromInline(res, chatId, ticker, false);
+    return handleAddFromInline(chatId, ticker, false);
   }
 
   if (resultId.startsWith("etf_")) {
     const ticker = resultId.replace("etf_", "");
-    return handleAddFromInline(res, chatId, ticker, true);
+    return handleAddFromInline(chatId, ticker, true);
   }
 
   if (resultId.startsWith("custom_")) {
     const ticker = resultId.replace("custom_", "");
     const custom = CUSTOM_TICKERS.find((c) => c.ticker === ticker);
     if (custom) {
-      return handleAddFromInline(res, chatId, ticker, custom.isEtf);
+      return handleAddFromInline(chatId, ticker, custom.isEtf);
     }
   }
-
-  return res.status(200).json({ ok: true });
 }
 
-async function handleCallback(res: VercelResponse, cb: { id: string; data: string; message: { chat: { id: number }; text: string } }) {
+async function handleCallback(cb: { id: string; data: string; message: { chat: { id: number }; text: string } }) {
   const chatId = String(cb.message.chat.id);
   const [action, ticker] = cb.data.split(":");
 
@@ -164,8 +164,6 @@ async function handleCallback(res: VercelResponse, cb: { id: string; data: strin
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ callback_query_id: cb.id }),
   });
-
-  return res.status(200).json({ ok: true });
 }
 
 function resolveTickerInfo(ticker: string): { name: string; sector: string } {
@@ -181,12 +179,12 @@ function resolveTickerInfo(ticker: string): { name: string; sector: string } {
   return { name: ticker, sector: "" };
 }
 
-async function handleAddFromInline(res: VercelResponse, chatId: string, ticker: string, isEtf: boolean) {
+async function handleAddFromInline(chatId: string, ticker: string, isEtf: boolean) {
   const result = isEtf ? await addEtf(chatId, ticker) : await addStock(chatId, ticker);
 
   if (!result.ok && result.error) {
     await sendMessage(chatId, result.error);
-    return res.status(200).json({ ok: true });
+    return;
   }
 
   const { name, sector: sectorOrCategory } = resolveTickerInfo(ticker);
@@ -241,30 +239,29 @@ async function handleAddFromInline(res: VercelResponse, chatId: string, ticker: 
   };
 
   await sendMessageWithLogo(chatId, fullMsg, logoUrl, "Markdown", replyMarkup);
-  return res.status(200).json({ ok: true });
 }
 
-async function handleMessage(res: VercelResponse, message: { chat: { id: number; first_name?: string }; text?: string }) {
+async function handleMessage(message: { chat: { id: number; first_name?: string }; text?: string }) {
   const chatId = String(message.chat.id);
   const text = (message.text || "").trim();
 
   if (text.startsWith("QUARTLY_ADD_STOCK:")) {
     const ticker = text.replace("QUARTLY_ADD_STOCK:", "");
-    return handleAddFromInline(res, chatId, ticker, false);
+    return handleAddFromInline(chatId, ticker, false);
   }
 
   if (text.startsWith("QUARTLY_ADD_ETF:")) {
     const ticker = text.replace("QUARTLY_ADD_ETF:", "");
-    return handleAddFromInline(res, chatId, ticker, true);
+    return handleAddFromInline(chatId, ticker, true);
   }
 
   if (text.startsWith("QUARTLY_ADD_CUSTOM:")) {
     const ticker = text.replace("QUARTLY_ADD_CUSTOM:", "");
     const custom = CUSTOM_TICKERS.find((c) => c.ticker === ticker);
     if (custom) {
-      return handleAddFromInline(res, chatId, ticker, custom.isEtf);
+      return handleAddFromInline(chatId, ticker, custom.isEtf);
     }
-    return res.status(200).json({ ok: true });
+    return;
   }
 
   const normalizedText = text.split("@")[0].trim();
@@ -289,29 +286,27 @@ Escribe ${BOT_USERNAME} y el ticker o nombre de la empresa/ETF en cualquier chat
 /myetfs — Ver y eliminar ETFs de tu watchlist
 /report — Reporte manual de tus favoritos ahora`;
     await sendMessage(chatId, welcome);
-    return res.status(200).json({ ok: true });
+    return;
   }
 
   if (normalizedText === "/mystocks") {
-    return handleMyStocks(res, chatId);
+    return handleMyStocks(chatId);
   }
 
   if (normalizedText === "/myetfs") {
-    return handleMyEtfs(res, chatId);
+    return handleMyEtfs(chatId);
   }
 
   if (normalizedText === "/report") {
-    return handleReport(res, chatId);
+    return handleReport(chatId);
   }
-
-  return res.status(200).json({ ok: true });
 }
 
-async function handleMyStocks(res: VercelResponse, chatId: string) {
+async function handleMyStocks(chatId: string) {
   const stocks = await getUserStocks(chatId);
   if (stocks.length === 0) {
     await sendMessage(chatId, `📋 No tienes acciones en tu watchlist. Usa ${BOT_USERNAME} para agregar.`);
-    return res.status(200).json({ ok: true });
+    return;
   }
 
   let msg = "📋 *Tus acciones:*\n\n";
@@ -340,15 +335,13 @@ async function handleMyStocks(res: VercelResponse, chatId: string) {
       disable_web_page_preview: true,
     }),
   });
-
-  return res.status(200).json({ ok: true });
 }
 
-async function handleMyEtfs(res: VercelResponse, chatId: string) {
+async function handleMyEtfs(chatId: string) {
   const etfs = await getUserEtfs(chatId);
   if (etfs.length === 0) {
     await sendMessage(chatId, `📋 No tienes ETFs en tu watchlist. Usa ${BOT_USERNAME} para agregar.`);
-    return res.status(200).json({ ok: true });
+    return;
   }
 
   let msg = "📋 *Tus ETFs:*\n\n";
@@ -376,17 +369,15 @@ async function handleMyEtfs(res: VercelResponse, chatId: string) {
       disable_web_page_preview: true,
     }),
   });
-
-  return res.status(200).json({ ok: true });
 }
 
-async function handleReport(res: VercelResponse, chatId: string) {
+async function handleReport(chatId: string) {
   const { stocks, etfs } = await getUserWatchlist(chatId);
   const allTickers = [...stocks, ...etfs];
 
   if (allTickers.length === 0) {
     await sendMessage(chatId, `No tienes activos en tu watchlist. Usa ${BOT_USERNAME} para agregar.`);
-    return res.status(200).json({ ok: true });
+    return;
   }
 
   const today = new Date().toISOString().split("T")[0];
@@ -420,7 +411,7 @@ async function handleReport(res: VercelResponse, chatId: string) {
       const fullMsg = `${msg}\n\n${signal}`;
       await sendMessageWithLogo(chatId, fullMsg, logoUrl);
     }
-    return res.status(200).json({ ok: true });
+    return;
   }
 
   for (const event of reportingToday) {
@@ -470,8 +461,6 @@ async function handleReport(res: VercelResponse, chatId: string) {
   if (remaining <= 0) {
     await sendMessage(chatId, getQuotaExceededMessage());
   }
-
-  return res.status(200).json({ ok: true });
 }
 
 function buildRawEarningsMessage(

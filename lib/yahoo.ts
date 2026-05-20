@@ -4,7 +4,12 @@
  * Use of this code requires prior authorization from the owner.
  */
 
-import yahooFinance from "yahoo-finance2";
+// yahoo-finance2 is unreliable in Vercel Serverless (scraping blocked).
+// All price variation data now comes from Finnhub candles instead.
+// This file is kept for import compatibility but delegates to finnhub.
+
+import { getQuote } from "./finnhub";
+import { getPriceVariations } from "./price-variations";
 
 export interface YahooPriceData {
   current: number;
@@ -19,42 +24,22 @@ export interface YahooPriceData {
 
 export async function getYahooPriceDataFull(ticker: string): Promise<YahooPriceData | null> {
   try {
-    const quote = await yahooFinance.quote(ticker) as Record<string, unknown>;
+    const [quote, variations] = await Promise.all([
+      getQuote(ticker),
+      getPriceVariations(ticker),
+    ]);
 
-    let historical: Array<{ close: number }> = [];
-    try {
-      const period1 = new Date();
-      period1.setFullYear(period1.getFullYear() - 1);
-      historical = (await yahooFinance.historical(ticker, {
-        period1,
-        period2: new Date(),
-        interval: "1d",
-      })) as Array<{ close: number }>;
-    } catch {
-      historical = [];
-    }
-
-    if (!quote || typeof quote.regularMarketPrice !== "number") return null;
-
-    const closes = historical.map((d) => d.close).filter(Boolean);
-    const current = quote.regularMarketPrice as number;
-
-    const getChange = (daysAgo: number): number | null => {
-      if (closes.length < daysAgo) return null;
-      const past = closes[closes.length - daysAgo];
-      if (!past || past === 0) return null;
-      return ((current - past) / past) * 100;
-    };
+    if (!quote) return null;
 
     return {
-      current,
-      change1d: typeof quote.regularMarketChangePercent === "number" ? (quote.regularMarketChangePercent as number) : null,
-      change1w: getChange(5),
-      change1m: getChange(21),
-      change3m: getChange(63),
-      change1y: getChange(252),
-      high52w: typeof quote.fiftyTwoWeekHigh === "number" ? (quote.fiftyTwoWeekHigh as number) : null,
-      low52w: typeof quote.fiftyTwoWeekLow === "number" ? (quote.fiftyTwoWeekLow as number) : null,
+      current: quote.c,
+      change1d: typeof quote.dp === "number" ? quote.dp : null,
+      change1w: variations?.change1w ?? null,
+      change1m: variations?.change1m ?? null,
+      change3m: variations?.change3m ?? null,
+      change1y: variations?.change1y ?? null,
+      high52w: variations?.high52w ?? null,
+      low52w: variations?.low52w ?? null,
     };
   } catch {
     return null;
