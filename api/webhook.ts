@@ -25,6 +25,7 @@ import { formatPriceBlock, PriceData } from "../lib/price";
 import { getYahooPriceDataFull } from "../lib/yahoo";
 
 const BOT_USERNAME = "@earningsinfoaibot";
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "GET") {
@@ -52,7 +53,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error("Webhook handler error:", err);
   }
 
-  // Always respond AFTER processing so Vercel doesn't kill the function early
   return res.status(200).json({ ok: true });
 }
 
@@ -170,13 +170,12 @@ async function buildTickerCard(
 ): Promise<{ msg: string; logoUrl: string }> {
   const { name, sector } = resolveTickerInfo(ticker);
 
-  const [quote, recs, history, logoUrl, yahooData] = await Promise.all([
-    getQuote(ticker),
-    getRecommendationTrends(ticker),
-    isEtf ? Promise.resolve([]) : getEarningsHistory(ticker),
-    getLogoUrl(ticker, isEtf),
-    getYahooPriceDataFull(ticker),
-  ]);
+  // Sequential to avoid hammering Finnhub rate limit
+  const quote = await getQuote(ticker);
+  const recs = await getRecommendationTrends(ticker);
+  const history = isEtf ? [] : await getEarningsHistory(ticker);
+  const logoUrl = await getLogoUrl(ticker, isEtf);
+  const yahooData = await getYahooPriceDataFull(ticker);
 
   const priceData: PriceData = {
     current: yahooData?.current ?? quote?.c ?? 0,
@@ -373,18 +372,14 @@ async function handleReport(chatId: string) {
         const event = todayCalendar.find((e) => e.symbol === ticker)!;
         const { name, sector } = resolveTickerInfo(ticker);
         const logoUrl = await getLogoUrl(ticker, isEtf);
-        const [history, recs, quote] = await Promise.all([
-          isEtf ? Promise.resolve([]) : getEarningsHistory(ticker),
-          getRecommendationTrends(ticker),
-          getQuote(ticker),
-        ]);
+        const history = isEtf ? [] : await getEarningsHistory(ticker);
+        const recs = await getRecommendationTrends(ticker);
+        const quote = await getQuote(ticker);
 
         const quota = await checkAndConsumeQuota(1);
         if (quota.allowed) {
           const companyData: CompanyData = {
-            ticker,
-            name,
-            sector,
+            ticker, name, sector,
             date: event.date,
             hour: event.hour || "N/A",
             epsEstimate: event.estimate,
@@ -399,11 +394,13 @@ async function handleReport(chatId: string) {
           const analysis = report.favReports[ticker];
           if (analysis) {
             await sendMessageWithLogo(chatId, analysis, logoUrl);
+            await sleep(1000); // 1s between messages
             continue;
           }
         }
         const rawMsg = buildRawEarningsMessage(event, name, sector, quote, recs, history, isEtf);
         await sendMessageWithLogo(chatId, rawMsg, logoUrl);
+        await sleep(1000);
         continue;
       }
 
@@ -414,6 +411,9 @@ async function handleReport(chatId: string) {
       console.error(`Error building card for ${ticker}:`, err);
       await sendMessage(chatId, `⚠️ No se pudo cargar el reporte de *${ticker}*. Intenta de nuevo.`);
     }
+
+    // 1.2s between tickers to stay under Finnhub's 60 req/min
+    await sleep(1200);
   }
 
   const remaining = await getRemainingQuota();

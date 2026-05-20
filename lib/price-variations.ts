@@ -4,9 +4,6 @@
  * Use of this code requires prior authorization from the owner.
  */
 
-// Fetches 1 year of daily candles from Finnhub to compute
-// 1w, 1m, 3m, 1y price variations and 52-week high/low.
-
 const BASE = "https://finnhub.io/api/v1";
 const TOKEN = process.env.FINNHUB_API_KEY || "";
 
@@ -19,16 +16,28 @@ export interface PriceVariations {
   low52w: number | null;
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function fetchCandles(ticker: string, attempt = 0): Promise<Record<string, unknown> | null> {
+  const to = Math.floor(Date.now() / 1000);
+  const from = to - 370 * 24 * 60 * 60;
+  const url = `${BASE}/stock/candle?symbol=${ticker}&resolution=D&from=${from}&to=${to}&token=${TOKEN}`;
+
+  const res = await fetch(url);
+
+  if (res.status === 429) {
+    if (attempt >= 2) return null; // max 3 attempts
+    await sleep(1500 * (attempt + 1)); // 1.5s, 3s
+    return fetchCandles(ticker, attempt + 1);
+  }
+
+  if (!res.ok) return null;
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
 export async function getPriceVariations(ticker: string): Promise<PriceVariations | null> {
   try {
-    const to = Math.floor(Date.now() / 1000);
-    const from = to - 370 * 24 * 60 * 60; // ~1 year + buffer
-
-    const url = `${BASE}/stock/candle?symbol=${ticker}&resolution=D&from=${from}&to=${to}&token=${TOKEN}`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
-
-    const data = (await res.json()) as Record<string, unknown>;
+    const data = await fetchCandles(ticker);
     if (!data || data.s !== "ok" || !Array.isArray(data.c) || (data.c as number[]).length === 0) return null;
 
     const closes = data.c as number[];
@@ -44,16 +53,13 @@ export async function getPriceVariations(ticker: string): Promise<PriceVariation
       return ((current - past) / past) * 100;
     };
 
-    const high52w = highs.length > 0 ? Math.max(...highs) : null;
-    const low52w = lows.length > 0 ? Math.min(...lows) : null;
-
     return {
       change1w: calcChange(5),
       change1m: calcChange(21),
       change3m: calcChange(63),
       change1y: calcChange(252),
-      high52w,
-      low52w,
+      high52w: highs.length > 0 ? Math.max(...highs) : null,
+      low52w: lows.length > 0 ? Math.min(...lows) : null,
     };
   } catch {
     return null;
