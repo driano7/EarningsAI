@@ -41,32 +41,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const body = req.body;
   if (!body) return res.status(200).json({ ok: true });
 
-  // Dispatch processing as a non-awaited promise so the response is NOT blocked
-  const process = async () => {
-    try {
-      if (body.inline_query) {
-        await handleInlineQuery(body.inline_query);
-      } else if (body.chosen_inline_result) {
-        await handleChosenInlineResult(body.chosen_inline_result);
-      } else if (body.callback_query) {
-        await handleCallback(body.callback_query);
-      } else if (body.message) {
-        await handleMessage(body.message);
-      }
-    } catch (err) {
-      console.error("Webhook handler error:", err);
+  try {
+    if (body.inline_query) {
+      await handleInlineQuery(body.inline_query);
+    } else if (body.chosen_inline_result) {
+      await handleChosenInlineResult(body.chosen_inline_result);
+    } else if (body.callback_query) {
+      await handleCallback(body.callback_query);
+    } else if (body.message) {
+      await handleMessage(body.message);
     }
-  };
+  } catch (err) {
+    console.error("Webhook handler error:", err);
+  }
 
-  // Fire-and-forget: start processing but don’t block the HTTP response
-  // Vercel will keep the process alive as long as the event loop has pending work
-  const processingPromise = process();
-
-  // Respond immediately to Telegram (prevents retries)
-  res.status(200).json({ ok: true });
-
-  // Await the processing AFTER responding, keeping the event loop alive
-  await processingPromise;
+  return res.status(200).json({ ok: true });
 }
 
 async function handleInlineQuery(query: { id: string; query: string; from: { id: number } }) {
