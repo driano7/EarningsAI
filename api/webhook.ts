@@ -27,6 +27,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return handleInlineQuery(res, body.inline_query);
   }
 
+  if (body.chosen_inline_result) {
+    return handleChosenInlineResult(res, body.chosen_inline_result);
+  }
+
   if (body.callback_query) {
     return handleCallback(res, body.callback_query);
   }
@@ -81,6 +85,33 @@ async function handleInlineQuery(res: VercelResponse, query: { id: string; query
   }
 
   await answerInlineQuery(query.id, results);
+  return res.status(200).json({ ok: true });
+}
+
+// chosen_inline_result: fired when the user picks a result from the inline query.
+// from.id is always the user's Telegram ID — use it as chatId so the response
+// goes to the bot's private chat with the user, regardless of which chat they
+// triggered the inline from.
+async function handleChosenInlineResult(
+  res: VercelResponse,
+  chosen: { result_id: string; from: { id: number }; query: string }
+) {
+  const chatId = String(chosen.from.id);
+  const resultId = chosen.result_id; // e.g. "stock_AAPL" or "etf_QQQ"
+
+  // Ensure the user is registered so addStock/addEtf can work
+  await registerUser(chatId);
+
+  if (resultId.startsWith("stock_")) {
+    const ticker = resultId.replace("stock_", "");
+    return handleAddFromInline(res, chatId, ticker, false);
+  }
+
+  if (resultId.startsWith("etf_")) {
+    const ticker = resultId.replace("etf_", "");
+    return handleAddFromInline(res, chatId, ticker, true);
+  }
+
   return res.status(200).json({ ok: true });
 }
 
@@ -163,6 +194,8 @@ async function handleMessage(res: VercelResponse, message: { chat: { id: number;
   const chatId = String(message.chat.id);
   const text = (message.text || "").trim();
 
+  // Fallback: handle QUARTLY_ADD_* messages that arrive as regular messages
+  // (e.g. when the inline is used inside the bot's own chat)
   if (text.startsWith("QUARTLY_ADD_STOCK:")) {
     const ticker = text.replace("QUARTLY_ADD_STOCK:", "");
     return handleAddFromInline(res, chatId, ticker, false);
