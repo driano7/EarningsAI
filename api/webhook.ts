@@ -27,6 +27,8 @@ import { getYahooPriceDataFull } from "../lib/yahoo";
 const BOT_USERNAME = "@earningsinfoaibot";
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+export const maxDuration = 60; // Vercel Pro/Hobby max for background work
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "GET") {
     return res.status(200).json({ ok: true, message: "Quartly webhook is running" });
@@ -39,6 +41,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const body = req.body;
   if (!body) return res.status(200).json({ ok: true });
 
+  // Respond to Telegram immediately so it doesn’t retry
+  res.status(200).json({ ok: true });
+
+  // Process in background after response is sent
   try {
     if (body.inline_query) {
       await handleInlineQuery(body.inline_query);
@@ -52,8 +58,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err) {
     console.error("Webhook handler error:", err);
   }
-
-  return res.status(200).json({ ok: true });
 }
 
 async function handleInlineQuery(query: { id: string; query: string; from: { id: number } }) {
@@ -170,10 +174,12 @@ async function buildTickerCard(
 ): Promise<{ msg: string; logoUrl: string }> {
   const { name, sector } = resolveTickerInfo(ticker);
 
-  // Sequential to avoid hammering Finnhub rate limit
   const quote = await getQuote(ticker);
+  await sleep(300);
   const recs = await getRecommendationTrends(ticker);
+  await sleep(300);
   const history = isEtf ? [] : await getEarningsHistory(ticker);
+  if (!isEtf) await sleep(300);
   const logoUrl = await getLogoUrl(ticker, isEtf);
   const yahooData = await getYahooPriceDataFull(ticker);
 
@@ -351,6 +357,8 @@ async function handleReport(chatId: string) {
     return;
   }
 
+  await sendMessage(chatId, `⏳ Generando reporte de ${allTickers.length} activos\u2026 llegará en unos segundos.`);
+
   const today = new Date().toISOString().split("T")[0];
   const future = new Date();
   future.setDate(future.getDate() + 90);
@@ -376,8 +384,11 @@ async function handleReport(chatId: string) {
     try {
       const logoUrl = await getLogoUrl(ticker, isEtf);
       const history = isEtf ? [] : await getEarningsHistory(ticker);
+      await sleep(400);
       const recs = await getRecommendationTrends(ticker);
+      await sleep(400);
       const quote = await getQuote(ticker);
+      await sleep(400);
 
       const companyData: CompanyData = {
         ticker, name, sector,
@@ -397,8 +408,6 @@ async function handleReport(chatId: string) {
       console.error(`Error fetching data for ${ticker}:`, err);
       await sendMessage(chatId, `⚠️ No se pudo cargar el reporte de *${ticker}*. Intenta de nuevo.`);
     }
-
-    await sleep(1200);
   }
 
   // ─── Phase 2: single OpenRouter request for ALL reporting tickers ────────────
@@ -438,7 +447,7 @@ async function handleReport(chatId: string) {
       await sendMessageWithLogo(chatId, rawMsg, logoUrl);
     }
 
-    await sleep(1000);
+    await sleep(700);
   }
 
   // ─── Phase 4: non-reporting tickers (price cards) ────────────────────────────
@@ -454,7 +463,7 @@ async function handleReport(chatId: string) {
       await sendMessage(chatId, `⚠️ No se pudo cargar el reporte de *${ticker}*. Intenta de nuevo.`);
     }
 
-    await sleep(1200);
+    await sleep(700);
   }
 
   const remaining = await getRemainingQuota();
