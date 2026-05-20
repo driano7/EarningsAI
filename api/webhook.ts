@@ -38,28 +38,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const body = req.body;
   if (!body) return res.status(200).json({ ok: true });
 
-  // Respond 200 immediately so Telegram doesn't retry
-  res.status(200).json({ ok: true });
-
-  if (body.inline_query) {
-    await handleInlineQuery(body.inline_query).catch(console.error);
-    return;
+  try {
+    if (body.inline_query) {
+      await handleInlineQuery(body.inline_query);
+    } else if (body.chosen_inline_result) {
+      await handleChosenInlineResult(body.chosen_inline_result);
+    } else if (body.callback_query) {
+      await handleCallback(body.callback_query);
+    } else if (body.message) {
+      await handleMessage(body.message);
+    }
+  } catch (err) {
+    console.error("Webhook handler error:", err);
   }
 
-  if (body.chosen_inline_result) {
-    await handleChosenInlineResult(body.chosen_inline_result).catch(console.error);
-    return;
-  }
-
-  if (body.callback_query) {
-    await handleCallback(body.callback_query).catch(console.error);
-    return;
-  }
-
-  if (body.message) {
-    await handleMessage(body.message).catch(console.error);
-    return;
-  }
+  // Always respond AFTER processing so Vercel doesn't kill the function early
+  return res.status(200).json({ ok: true });
 }
 
 async function handleInlineQuery(query: { id: string; query: string; from: { id: number } }) {
@@ -169,7 +163,6 @@ function resolveTickerInfo(ticker: string): { name: string; sector: string } {
   return { name: ticker, sector: "" };
 }
 
-// Builds a full ticker card. upcomingCalendar is pre-fetched outside the loop.
 async function buildTickerCard(
   ticker: string,
   isEtf: boolean,
@@ -222,7 +215,6 @@ async function handleAddFromInline(chatId: string, ticker: string, isEtf: boolea
     return;
   }
 
-  // For inline add, fetch next 90d calendar just for this one ticker
   const today = new Date().toISOString().split("T")[0];
   const future = new Date();
   future.setDate(future.getDate() + 90);
@@ -360,7 +352,6 @@ async function handleReport(chatId: string) {
     return;
   }
 
-  // Fetch both calendars ONCE outside the loop
   const today = new Date().toISOString().split("T")[0];
   const future = new Date();
   future.setDate(future.getDate() + 90);
@@ -374,12 +365,10 @@ async function handleReport(chatId: string) {
     todayCalendar.filter((e) => allTickers.includes(e.symbol)).map((e) => e.symbol)
   );
 
-  // Send one full card per ticker, sequentially
   for (const ticker of allTickers) {
     const isEtf = etfs.includes(ticker);
 
     try {
-      // If reporting today, use AI analysis (or raw fallback)
       if (reportingTodaySymbols.has(ticker)) {
         const event = todayCalendar.find((e) => e.symbol === ticker)!;
         const { name, sector } = resolveTickerInfo(ticker);
@@ -413,19 +402,16 @@ async function handleReport(chatId: string) {
             continue;
           }
         }
-        // Fallback to raw message if AI quota exceeded
         const rawMsg = buildRawEarningsMessage(event, name, sector, quote, recs, history, isEtf);
         await sendMessageWithLogo(chatId, rawMsg, logoUrl);
         continue;
       }
 
-      // Normal day: full ticker card using pre-fetched upcoming calendar
       const { msg, logoUrl } = await buildTickerCard(ticker, isEtf, upcomingCalendar);
       await sendMessageWithLogo(chatId, msg, logoUrl);
 
     } catch (err) {
       console.error(`Error building card for ${ticker}:`, err);
-      // Send a minimal fallback so the user knows this ticker failed
       await sendMessage(chatId, `⚠️ No se pudo cargar el reporte de *${ticker}*. Intenta de nuevo.`);
     }
   }
