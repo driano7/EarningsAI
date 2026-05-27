@@ -76,6 +76,78 @@ export async function removeEtf(chatId: string, ticker: string): Promise<void> {
   await kv.set(`etfs:${chatId}`, etfs.filter((t) => t !== ticker));
 }
 
+export async function getUserCryptos(chatId: string): Promise<string[]> {
+  const cryptos = await kv.get<string[]>(`crypto:${chatId}`);
+  return cryptos || [];
+}
+
+export async function addCrypto(chatId: string, ticker: string): Promise<{ ok: boolean; error?: string }> {
+  const key = `crypto:${chatId}`;
+  const cryptos = await getUserCryptos(chatId);
+  const stocks = await getUserStocks(chatId);
+  const etfs = await getUserEtfs(chatId);
+
+  if (cryptos.includes(ticker)) return { ok: true };
+
+  if (stocks.length + etfs.length + cryptos.length >= WATCHLIST_LIMIT) {
+    return {
+      ok: false,
+      error: `❌ Alcanzaste el límite de 30 activos en tu watchlist.\nElimina uno con /mystocks, /myetfs o /mycryptos antes de agregar otro.`,
+    };
+  }
+
+  cryptos.push(ticker);
+  await kv.set(key, cryptos);
+  await registerUser(chatId);
+  return { ok: true };
+}
+
+export async function removeCrypto(chatId: string, ticker: string): Promise<void> {
+  const cryptos = await getUserCryptos(chatId);
+  await kv.set(`crypto:${chatId}`, cryptos.filter((t) => t !== ticker));
+}
+
+export interface FinanceTransaction {
+  id: string;
+  type: "income" | "expense" | "invest";
+  amount: number;
+  category: string;
+  description: string;
+  date: string;
+  createdAt: number;
+}
+
+export async function getFinanceTransactions(chatId: string): Promise<FinanceTransaction[]> {
+  const txns = await kv.get<FinanceTransaction[]>(`finance:${chatId}:transactions`);
+  return txns || [];
+}
+
+export async function addFinanceTransaction(chatId: string, txn: FinanceTransaction): Promise<void> {
+  const txns = await getFinanceTransactions(chatId);
+  txns.push(txn);
+  await kv.set(`finance:${chatId}:transactions`, txns);
+  await registerUser(chatId);
+}
+
+export async function removeFinanceTransaction(chatId: string, txnId: string): Promise<void> {
+  const txns = await getFinanceTransactions(chatId);
+  await kv.set(`finance:${chatId}:transactions`, txns.filter((t) => t.id !== txnId));
+}
+
+export const DEFAULT_CATEGORIES = {
+  income: ["Salario", "Freelance", "Inversiones", "Ventas", "Otros ingresos"],
+  expense: ["Comida", "Renta", "Transporte", "Entretenimiento", "Salud", "Educación", "Servicios", "Compras", "Otros gastos"],
+};
+
+export async function getUserCategories(chatId: string): Promise<{ income: string[]; expense: string[] }> {
+  const cats = await kv.get<{ income: string[]; expense: string[] }>(`finance:${chatId}:categories`);
+  return cats || DEFAULT_CATEGORIES;
+}
+
+export async function setUserCategories(chatId: string, cats: { income: string[]; expense: string[] }): Promise<void> {
+  await kv.set(`finance:${chatId}:categories`, cats);
+}
+
 export async function registerUser(chatId: string): Promise<void> {
   await kv.sadd("users", chatId);
 }

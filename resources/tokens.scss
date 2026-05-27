@@ -1,0 +1,26 @@
+/*
+ * Quartly Bot — resources/tokens.scss
+ * Tokens de color semánticos para finanzas personales
+ * Basados en el sistema de tokens CSS de Once UI
+ */
+
+:root {
+  /* Profit / Loss */
+  --color-profit: var(--emerald-500);
+  --color-loss: var(--red-400);
+  --color-neutral-change: var(--neutral-on-background-weak);
+
+  /* Criptos */
+  --color-btc: #F7931A;
+  --color-eth: #627EEA;
+  --color-usdc: #2775CA;
+
+  /* Surfaces para cards financieras */
+  --surface-card: var(--neutral-alpha-weak);
+  --surface-card-hover: var(--neutral-alpha-medium);
+
+  /* Chart colors — divergent mode */
+  --chart-positive: var(--emerald-background-strong);
+  --chart-negative: var(--red-background-strong);
+  --chart-neutral: var(--cyan-background-medium);
+}

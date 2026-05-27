@@ -1,0 +1,18 @@
+.splitView {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+.resizeHandle {
+  position: relative;
+  z-index: 1;
+  
+  &:hover {
+    z-index: 2;
+  }
+  
+  &.dragging {
+    z-index: 3;
+  }
+}
