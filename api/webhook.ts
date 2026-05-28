@@ -316,6 +316,7 @@ Escribe ${BOT_USERNAME} y el ticker o nombre de la empresa/ETF/cripto en cualqui
 /mystocks — Ver y eliminar acciones de tu watchlist
 /myetfs — Ver y eliminar ETFs de tu watchlist
 /mycryptos — Ver y eliminar cryptos de tu watchlist
+/link — Vincular con Quartly Dashboard web
 /report — Reporte manual de tus favoritos ahora
 /income — Registrar ingreso: /income [cantidad] [categoría] [descripción]
 /expense — Registrar gasto: /expense [cantidad] [categoría] [descripción]
@@ -330,6 +331,8 @@ Escribe ${BOT_USERNAME} y el ticker o nombre de la empresa/ETF/cripto en cualqui
   if (cmd === "/mystocks") return handleMyStocks(chatId);
   if (cmd === "/myetfs") return handleMyEtfs(chatId);
   if (cmd === "/mycryptos") return handleMyCryptos(chatId);
+
+  if (cmd === "/link" || cmd.startsWith("/link ")) return handleLinkCommand(chatId, text);
   if (cmd === "/report") return handleReport(chatId);
 
   if (cmd.startsWith("/income ")) return handleFinanceCommand(res!, chatId, "income", text);
@@ -480,6 +483,33 @@ async function handleMyCryptos(chatId: string) {
       disable_web_page_preview: true,
     }),
   });
+}
+
+/* ─── Web Dashboard Linking ─────────────────────────────── */
+
+async function handleLinkCommand(chatId: string, text: string) {
+  const parts = text.split(" ").filter(Boolean);
+  const code = parts[1];
+  if (!code) {
+    await sendMessage(chatId, "🔗 *Vincular con Quartly Dashboard*\n\nUsa: /link [código]\n\nInicia sesión en el dashboard y obtén el código de 4 letras para vincular tu cuenta de Telegram.");
+    return;
+  }
+
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || "https://earnings-ai.vercel.app"}/api/auth/link`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: code.toUpperCase(), chatId }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      await sendMessage(chatId, `✅ *Cuenta vinculada exitosamente!*\n\nTu Telegram ahora está conectado al dashboard. Refresca la página del dashboard para ver tus cryptos y datos sincronizados.`);
+    } else {
+      await sendMessage(chatId, `❌ *Error al vincular:* ${data.error || "Código inválido"}`);
+    }
+  } catch {
+    await sendMessage(chatId, "❌ Error de conexión. Intenta de nuevo.");
+  }
 }
 
 async function handleReport(chatId: string) {

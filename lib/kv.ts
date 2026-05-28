@@ -167,3 +167,39 @@ export async function markReminded(chatId: string, ticker: string, date: string,
   const key = `reminded:${chatId}:${ticker}:${date}:${type}`;
   await kv.set(key, true);
 }
+
+/* ─── Email ↔ ChatId linking ─────────────────────────────── */
+
+export async function getChatIdByEmail(email: string): Promise<string | null> {
+  const chatId = await kv.get<string>(`user:chatid:${email.toLowerCase()}`);
+  return chatId ?? null;
+}
+
+export async function setChatIdByEmail(email: string, chatId: string): Promise<void> {
+  await kv.set(`user:chatid:${email.toLowerCase()}`, chatId);
+}
+
+export async function getEmailByChatId(chatId: string): Promise<string | null> {
+  const email = await kv.get<string>(`user:email:${chatId}`);
+  return email ?? null;
+}
+
+export async function setEmailByChatId(chatId: string, email: string): Promise<void> {
+  await kv.set(`user:email:${chatId}`, email.toLowerCase());
+}
+
+export async function generateLinkCode(email: string): Promise<string> {
+  const code = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const key = `link:${code}`;
+  await kv.set(key, { email: email.toLowerCase(), createdAt: Date.now() });
+  await kv.expire(key, 600);
+  return code;
+}
+
+export async function consumeLinkCode(code: string): Promise<string | null> {
+  const key = `link:${code.toUpperCase()}`;
+  const data = await kv.get<{ email: string; createdAt: number }>(key);
+  if (!data) return null;
+  await kv.del(key);
+  return data.email;
+}
