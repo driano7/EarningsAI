@@ -111,7 +111,7 @@ export default function LoginPage() {
           </Button>
 
           {error && (
-            <Text variant="body-default-s" onBackground="danger-weak" horizontal="center">
+            <Text variant="body-default-s" onBackground="danger-weak">
               {error}
             </Text>
           )}
