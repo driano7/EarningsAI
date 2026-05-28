@@ -63,7 +63,7 @@ export default function LoginPage() {
           <Column gap="s" horizontal="center">
             <Icon name="presentationChartLine" size="xl" />
             <Heading variant="display-strong-xs">Vincular con Telegram</Heading>
-            <Text variant="body-default-m" onBackground="neutral-weak" horizontal="center">
+            <Text variant="body-default-m" onBackground="neutral-weak">
               Para sincronizar tus datos, vincula tu cuenta de Telegram con el dashboard.
             </Text>
           </Column>
