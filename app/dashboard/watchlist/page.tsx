@@ -207,7 +207,7 @@ export default function WatchlistPage() {
             <Column padding="16" background="surface" radius="m" border="neutral-alpha-medium" gap="xs">
               <Text variant="label-default-xs" onBackground="neutral-weak">Sharpe Ratio</Text>
               <Text variant="label-strong-m" onBackground={
-                analytics.sharpe >= 2 ? "success-medium" : analytics.sharpe >= 1 ? "brand-medium" : analytics.sharpe >= 0 ? "warning-medium" : "danger-medium"
+                analytics.sharpe !== null ? (analytics.sharpe >= 2 ? "success-medium" : analytics.sharpe >= 1 ? "brand-medium" : analytics.sharpe >= 0 ? "warning-medium" : "danger-medium") : "neutral-medium"
               }>
                 {analytics.sharpe !== null ? analytics.sharpe.toFixed(2) : "—"}
               </Text>
