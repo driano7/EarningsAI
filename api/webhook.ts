@@ -36,21 +36,6 @@ import {
   setUserCategories,
   DEFAULT_CATEGORIES,
 } from "../lib/kv";
-import {
-  findAddressForAsset,
-  getGlobalPaymentAddresses,
-  createInvoice,
-  getInvoices,
-  updateInvoiceStatus,
-} from "../lib/kv-payments";
-import {
-  SUPPORTED_ASSETS,
-  NETWORK_LABELS,
-  getQrUrl,
-  verifyPayment,
-  PaymentAsset,
-  PaymentNetwork,
-} from "../lib/payment-verification";
 
 const BOT_USERNAME = "@earningsinfoaibot";
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -337,10 +322,7 @@ Escribe ${BOT_USERNAME} y el ticker o nombre de la empresa/ETF/cripto en cualqui
 /invest — Registrar inversión: /invest [cantidad] [ticker] [tipo]
 /summary — Resumen mensual: /summary o /summary YYYY\\-MM
 /categories — Ver y editar categorías
-/export\\_csv — Exportar datos financieros a CSV
-/pay — Ver direcciones de pago crypto aceptadas
-/payinvoice — Crear factura: /payinvoice USDC 50 Pago servicio
-/paystatus — Ver estado de factura: /paystatus a1b2c3d4`;
+/export\\_csv — Exportar datos financieros a CSV`;
     await sendMessage(chatId, welcome);
     return;
   }
@@ -361,10 +343,6 @@ Escribe ${BOT_USERNAME} y el ticker o nombre de la empresa/ETF/cripto en cualqui
   if (cmd.startsWith("/categories ")) return handleSubCategoriesCommand(res!, chatId, text);
   if (cmd === "/categories") return handleCategoriesCommand(res!, chatId);
   if (cmd === "/export_csv" || cmd === "/export") return handleExportCsvCommand(res!, chatId);
-
-  if (cmd === "/pay") return handlePayCommand(chatId);
-  if (cmd.startsWith("/payinvoice ")) return handlePayInvoiceCommand(res!, chatId, text);
-  if (cmd.startsWith("/paystatus ")) return handlePayStatusCommand(chatId, text);
 }
 
 async function handleMyStocks(chatId: string) {
@@ -655,143 +633,7 @@ async function handleReport(chatId: string) {
   }
 }
 
-/* ─── Crypto Payment Commands ────────────────────────────── */
 
-async function handlePayCommand(chatId: string) {
-  const addresses = await getGlobalPaymentAddresses();
-  if (addresses.length === 0) {
-    await sendMessage(chatId, "💳 *Pagos con Crypto*\n\nNo hay direcciones configuradas aún. Contacta al administrador.");
-    return;
-  }
-
-  let msg = "💳 *Pagos con Crypto*\n\nSelecciona el activo y red para pagar:\n\n";
-  for (const addr of addresses) {
-    const label = addr.label || `${addr.asset} (${NETWORK_LABELS[addr.network]})`;
-    msg += `*${label}*\n\`${addr.address}\`\n\n`;
-  }
-  msg += "Para crear una factura:\n/payinvoice [activo] [cantidad USD] [opcional: descripción]\n\n";
-  msg += "Para ver estado de factura:\n/paystatus [id-factura]";
-
-  await sendMessage(chatId, msg);
-}
-
-async function handlePayInvoiceCommand(res: VercelResponse, chatId: string, text: string) {
-  const parts = text.split(" ").filter(Boolean);
-  if (parts.length < 3) {
-    await sendMessage(chatId, "❌ Formato incorrecto.\nUsa: */payinvoice [activo] [cantidad USD] [descripción]*\nActivos disponibles: BTC, ETH, USDC, USDT, SOL\nEjemplo: /payinvoice USDC 50 Pago suscripción");
-    return res.status(200).json({ ok: true });
-  }
-
-  const asset = parts[1].toUpperCase() as PaymentAsset;
-  const amountFiat = parseFloat(parts[2].replace(",", ""));
-  const description = parts.slice(3).join(" ") || "Pago Quartly Bot";
-
-  const validAssets: PaymentAsset[] = ["BTC", "ETH", "USDC", "USDT", "SOL"];
-  if (!validAssets.includes(asset) || isNaN(amountFiat) || amountFiat <= 0) {
-    await sendMessage(chatId, "❌ Activo inválido o cantidad incorrecta.\nActivos: BTC, ETH, USDC, USDT, SOL\nEjemplo: /payinvoice USDC 50");
-    return res.status(200).json({ ok: true });
-  }
-
-  const addresses = await getGlobalPaymentAddresses();
-  const supported = SUPPORTED_ASSETS.filter((s) => s.asset === asset);
-  const available = supported.filter((s) =>
-    addresses.some((a) => a.asset === s.asset && a.network === s.network && a.active)
-  );
-
-  if (available.length === 0) {
-    await sendMessage(chatId, `❌ No hay direcciones configuradas para ${asset}.`);
-    return res.status(200).json({ ok: true });
-  }
-
-  const addr = addresses.find((a) => a.asset === asset && a.active);
-  if (!addr) {
-    await sendMessage(chatId, `❌ No hay dirección activa para ${asset}.`);
-    return res.status(200).json({ ok: true });
-  }
-
-  const invoiceId = crypto.randomUUID();
-  const invoice = {
-    id: invoiceId,
-    chatId,
-    asset,
-    network: addr.network,
-    address: addr.address,
-    amount: amountFiat,
-    amountFiat,
-    fiatCurrency: "USD",
-    status: "pending" as const,
-    description,
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-  };
-
-  await createInvoice(chatId, invoice);
-
-  const networkLabel = NETWORK_LABELS[addr.network];
-  const qrUrl = getQrUrl(addr.address, asset, amountFiat);
-
-  let msg = `🧾 *Factura #${invoiceId.slice(0, 8)}*\n\n`;
-  msg += `*Activo:* ${asset}\n`;
-  msg += `*Red:* ${networkLabel}\n`;
-  msg += `*Monto:* $${amountFiat.toFixed(2)} USD\n`;
-  msg += `*Descripción:* ${description}\n\n`;
-  msg += `*Dirección:*\n\`${addr.address}\`\n\n`;
-  msg += `QR: ${qrUrl}\n\n`;
-  msg += `Para verificar: /paystatus ${invoiceId.slice(0, 8)}`;
-
-  await sendMessage(chatId, msg);
-  return res.status(200).json({ ok: true });
-}
-
-async function handlePayStatusCommand(chatId: string, text: string) {
-  const parts = text.split(" ").filter(Boolean);
-  const shortId = parts[1];
-  if (!shortId) {
-    await sendMessage(chatId, "❌ Especifica el ID de la factura.\nEjemplo: /paystatus a1b2c3d4");
-    return;
-  }
-
-  const invoices = await getInvoices(chatId);
-  const invoice = invoices.find((inv) => inv.id.startsWith(shortId));
-  if (!invoice) {
-    await sendMessage(chatId, `❌ Factura no encontrada: ${shortId}`);
-    return;
-  }
-
-  const statusEmoji: Record<string, string> = {
-    pending: "⏳",
-    completed: "✅",
-    expired: "⌛",
-    failed: "❌",
-  };
-
-  let msg = `${statusEmoji[invoice.status] || "❓"} *Factura #${invoice.id.slice(0, 8)}*\n`;
-  msg += `*Estado:* ${invoice.status}\n`;
-  msg += `*Activo:* ${invoice.asset} (${NETWORK_LABELS[invoice.network]})\n`;
-  msg += `*Monto:* $${(invoice.amountFiat || 0).toFixed(2)} USD\n`;
-  if (invoice.description) msg += `*Descripción:* ${invoice.description}\n`;
-  msg += `*Creada:* ${new Date(invoice.createdAt).toLocaleString()}\n`;
-
-  if (invoice.status === "pending") {
-    msg += `\n⏳ Aún no se detecta el pago.\n`;
-    msg += `Dirección: \`${invoice.address}\``;
-
-    const result = await verifyPayment(invoice.address, invoice.asset, invoice.network, invoice.amountFiat);
-    if (result.confirmed) {
-      await updateInvoiceStatus(chatId, invoice.id, "completed", result.txHash);
-      msg = msg.replace("⏳ Aún no se detecta el pago.", `✅ ¡Pago confirmado! TX: \`${result.txHash}\``);
-    }
-  }
-
-  if (invoice.txHash) {
-    msg += `\n*TX:* \`${invoice.txHash}\``;
-  }
-  if (invoice.completedAt) {
-    msg += `\n*Completada:* ${new Date(invoice.completedAt).toLocaleString()}`;
-  }
-
-  await sendMessage(chatId, msg);
-}
 
 async function handleFinanceCommand(res: VercelResponse, chatId: string, type: "income" | "expense", text: string) {
   const parts = parseFinanceArgs(text);

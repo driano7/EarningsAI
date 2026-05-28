@@ -27,7 +27,6 @@ const navItems: NavItem[] = [
   { label: "Movimientos", href: "/dashboard/transactions", icon: "transactions" },
   { label: "Finanzas", href: "/dashboard/finance", icon: "finance" },
   { label: "Calendario", href: "/dashboard/calendar", icon: "calendar" },
-  { label: "Pagos", href: "/dashboard/payments", icon: "creditCard" },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
