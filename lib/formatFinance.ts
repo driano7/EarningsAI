@@ -22,7 +22,8 @@ export function formatCryptoAmount(value: number, ticker: string): string {
   return `${value.toFixed(decimals)} ${ticker.toUpperCase()}`;
 }
 
-export function getChangeColor(value: number): "emerald" | "red" | "neutral" {
+export function getChangeColor(value: number | null): "emerald" | "red" | "neutral" {
+  if (value === null) return "neutral";
   if (value > 0) return "emerald";
   if (value < 0) return "red";
   return "neutral";

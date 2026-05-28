@@ -14,6 +14,7 @@ import {
   ThemeSwitcher,
 } from "@once-ui-system/core";
 import type { IconName } from "@/resources/icons";
+import { formatCurrency } from "@/lib/formatFinance";
 
 interface NavItem {
   label: string;
@@ -32,6 +33,11 @@ export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const [time, setTime] = useState("");
+  const [balance, setBalance] = useState<number | null>(null);
+
+  const chatId = typeof window !== "undefined"
+    ? localStorage.getItem("quartly_chatId") || "default"
+    : "default";
 
   useEffect(() => {
     const update = () => {
@@ -47,6 +53,21 @@ export default function Header() {
     const id = setInterval(update, 30_000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    fetch(`/api/dashboard/portfolio?chatId=${chatId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.ok && data.positions?.length > 0) {
+          const total = data.positions.reduce(
+            (sum: number, p: { buyPrice: number; quantity: number }) => sum + p.buyPrice * p.quantity,
+            0
+          );
+          setBalance(total);
+        }
+      })
+      .catch(() => { /* ignore */ });
+  }, [chatId]);
 
   return (
     <Fade
@@ -100,7 +121,7 @@ export default function Header() {
             {time}
           </Text>
           <Badge background="brand-alpha-medium" onBackground="brand-strong">
-            $0.00
+            {balance !== null ? formatCurrency(balance) : "—"}
           </Badge>
           <ThemeSwitcher />
         </Row>

@@ -27,7 +27,7 @@ const code = Geist_Mono({
 const fonts = { heading, body, label, code };
 
 const style = {
-  theme: "dark" as const,
+  theme: "system" as const,
   neutral: "gray" as const,
   brand: "blue" as const,
   accent: "indigo" as const,

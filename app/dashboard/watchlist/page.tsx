@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Column, Row, Heading, Text, Badge, Card, IconButton } from "@once-ui-system/core";
+import { useEffect, useState, useMemo } from "react";
+import { Column, Row, Heading, Text, Badge, Card, IconButton, Grid } from "@once-ui-system/core";
+import { returns, annualizedVolatility, maxDrawdown, sharpeRatio } from "@/lib/gs-quant";
+import { formatPercent } from "@/lib/formatFinance";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { ChartCard } from "@/components/charts/ChartCard";
 import { exportCsvDownload, exportXlsxDownload } from "@/lib/chart-utils";
@@ -55,6 +57,18 @@ export default function WatchlistPage() {
       })
       .finally(() => setHistoryLoading(false));
   }, [selectedTicker, period]);
+
+  const analytics = useMemo(() => {
+    if (priceHistory.length < 2) return null;
+    const p = priceHistory.map((ph) => ph.close);
+    const r = returns(p);
+    return {
+      totalReturn: (p[p.length - 1] - p[0]) / p[0],
+      annualizedVol: r.length >= 2 ? annualizedVolatility(r) : null,
+      maxDrawdown: maxDrawdown(p),
+      sharpe: r.length >= 2 ? sharpeRatio(r) : null,
+    };
+  }, [priceHistory]);
 
   const filtered = tickers.filter(
     (t) =>
@@ -165,26 +179,62 @@ export default function WatchlistPage() {
                 Sin datos históricos disponibles
               </Text>
             )}
-          </ChartCard>
+    </ChartCard>
 
-          {priceHistory.length > 0 && (
-            <Row gap="s" padding="s">
-              <IconButton
-                icon="download"
-                onClick={() => exportCsvDownload(csvHeaders, csvRows, `${selectedTicker}-${period}.csv`)}
-                size="s"
-                variant="tertiary"
-                tooltip="CSV"
-              />
-              <IconButton
-                icon="download"
-                onClick={() => exportXlsxDownload(csvHeaders, csvRows, `${selectedTicker}-${period}.xlsx`)}
-                size="s"
-                variant="tertiary"
-                tooltip="XLSX"
-              />
-            </Row>
-          )}
+    {analytics && (
+      <Card padding="l" radius="m" fillWidth>
+        <Column gap="m">
+          <Heading variant="heading-strong-m">Analítica</Heading>
+          <Grid columns="4" gap="m" l={{ columns: 2 }} s={{ columns: 2 }}>
+            <Column padding="16" background="surface" radius="m" border="neutral-alpha-medium" gap="xs">
+              <Text variant="label-default-xs" onBackground="neutral-weak">Rendimiento Total</Text>
+              <Text variant="label-strong-m" onBackground={analytics.totalReturn >= 0 ? "success-medium" : "danger-medium"}>
+                {formatPercent(analytics.totalReturn * 100)}
+              </Text>
+            </Column>
+            <Column padding="16" background="surface" radius="m" border="neutral-alpha-medium" gap="xs">
+              <Text variant="label-default-xs" onBackground="neutral-weak">Volatilidad (anual)</Text>
+              <Text variant="label-strong-m">
+                {analytics.annualizedVol !== null ? formatPercent(analytics.annualizedVol * 100) : "—"}
+              </Text>
+            </Column>
+            <Column padding="16" background="surface" radius="m" border="neutral-alpha-medium" gap="xs">
+              <Text variant="label-default-xs" onBackground="neutral-weak">Máx. Drawdown</Text>
+              <Text variant="label-strong-m" onBackground="danger-medium">
+                {formatPercent(-analytics.maxDrawdown * 100)}
+              </Text>
+            </Column>
+            <Column padding="16" background="surface" radius="m" border="neutral-alpha-medium" gap="xs">
+              <Text variant="label-default-xs" onBackground="neutral-weak">Sharpe Ratio</Text>
+              <Text variant="label-strong-m" onBackground={
+                analytics.sharpe >= 2 ? "success-medium" : analytics.sharpe >= 1 ? "brand-medium" : analytics.sharpe >= 0 ? "warning-medium" : "danger-medium"
+              }>
+                {analytics.sharpe !== null ? analytics.sharpe.toFixed(2) : "—"}
+              </Text>
+            </Column>
+          </Grid>
+        </Column>
+      </Card>
+    )}
+
+    {priceHistory.length > 0 && (
+      <Row gap="s" padding="s">
+        <IconButton
+          icon="download"
+          onClick={() => exportCsvDownload(csvHeaders, csvRows, `${selectedTicker}-${period}.csv`)}
+          size="s"
+          variant="tertiary"
+          tooltip="CSV"
+        />
+        <IconButton
+          icon="download"
+          onClick={() => exportXlsxDownload(csvHeaders, csvRows, `${selectedTicker}-${period}.xlsx`)}
+          size="s"
+          variant="tertiary"
+          tooltip="XLSX"
+        />
+      </Row>
+    )}
         </Column>
       )}
 

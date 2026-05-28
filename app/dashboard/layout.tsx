@@ -24,11 +24,10 @@ const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: "dashboard" },
   { label: "Watchlist", href: "/dashboard/watchlist", icon: "watchlist" },
   { label: "Portfolio", href: "/dashboard/portfolio", icon: "portfolio" },
-  { label: "Transacciones", href: "/dashboard/transactions", icon: "transactions" },
-  { label: "Calendario", href: "/dashboard/calendar", icon: "calendar" },
-  { label: "Usuarios", href: "/dashboard/users", icon: "users" },
-  { label: "Cuota IA", href: "/dashboard/quota", icon: "quota" },
+  { label: "Movimientos", href: "/dashboard/transactions", icon: "transactions" },
   { label: "Finanzas", href: "/dashboard/finance", icon: "finance" },
+  { label: "Calendario", href: "/dashboard/calendar", icon: "calendar" },
+  { label: "Pagos", href: "/dashboard/payments", icon: "creditCard" },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

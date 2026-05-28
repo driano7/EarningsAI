@@ -1,13 +1,10 @@
-/*
- * Quartly Bot — hooks/useFinanceData.ts
- */
-
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { formatCurrency } from "@/lib/formatFinance";
 
 export interface KPIData {
   label: string;
   value: string;
-  change: number;
+  change: number | null;
   icon: string;
 }
 
@@ -29,12 +26,20 @@ export interface PortfolioAllocation {
 
 export interface FinanceData {
   balance: number;
-  monthlyChange: number;
+  monthlyChange: number | null;
   kpis: KPIData[];
   recentTransactions: TransactionData[];
   portfolioAllocation: PortfolioAllocation[];
   updatedAt: string;
 }
+
+const CHART_COLORS = [
+  "var(--chart-positive)",
+  "var(--chart-negative)",
+  "var(--chart-neutral)",
+  "var(--brand-background-strong)",
+  "var(--accent-background-strong)",
+];
 
 export function useFinanceData(): {
   data: FinanceData | null;
@@ -65,7 +70,9 @@ export function useFinanceData(): {
 
       const positions = portfolio.ok ? (portfolio.positions || []) : [];
       const transactions: TransactionData[] = txns.ok ? (txns.transactions || []) : [];
-      const recentTransactions = [...transactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10);
+      const recentTransactions = [...transactions]
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .slice(0, 10);
 
       const portfolioValue = positions.reduce(
         (sum: number, p: { buyPrice: number; quantity: number }) => sum + p.buyPrice * p.quantity,
@@ -76,40 +83,40 @@ export function useFinanceData(): {
         (p: { ticker: string; buyPrice: number; quantity: number }, i: number) => ({
           ticker: p.ticker,
           value: p.buyPrice * p.quantity,
-          fill: `var(--chart-${i % 5})`,
+          fill: CHART_COLORS[i % CHART_COLORS.length],
         })
       );
 
       const kpis: KPIData[] = [
         {
           label: "Portafolio",
-          value: `$${portfolioValue.toLocaleString()}`,
-          change: 2.4,
+          value: formatCurrency(portfolioValue),
+          change: null,
           icon: "chartPie",
         },
         {
           label: "Transacciones",
           value: String(transactions.length),
-          change: 12,
+          change: null,
           icon: "arrowUp",
         },
         {
           label: "Activos",
           value: String(positions.length),
-          change: 0,
+          change: null,
           icon: "banknotes",
         },
         {
           label: "Cuota IA",
           value: stats.ok ? `${stats.stats.quotaRemaining}/${stats.stats.quotaTotal}` : "N/A",
-          change: -5,
+          change: null,
           icon: "sparkles",
         },
       ];
 
       setData({
         balance: portfolioValue,
-        monthlyChange: 2.4,
+        monthlyChange: null,
         kpis,
         recentTransactions,
         portfolioAllocation,
