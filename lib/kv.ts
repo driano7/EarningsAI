@@ -6,7 +6,7 @@
 
 import { kv } from "@vercel/kv";
 
-const WATCHLIST_LIMIT = 30;
+const WATCHLIST_LIMIT = 80;
 
 export async function getUserStocks(chatId: string): Promise<string[]> {
   const stocks = await kv.get<string[]>(`stocks:${chatId}`);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Column, Row, Heading, Text, Badge, Card, Grid } from "@once-ui-system/core";
+import { Column, Row, Heading, Text, Badge, Card, Grid, Button, Input, IconButton } from "@once-ui-system/core";
 
 interface ExpenseItem {
   name: string;
@@ -35,16 +35,88 @@ export default function TransactionsPage() {
   const [data, setData] = useState<ExpenseData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Add expense form
+  const [newExpense, setNewExpense] = useState({ name: "", category: "General", amount: "" });
+  const [newIncome, setNewIncome] = useState({ name: "", amount: "" });
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [editExpense, setEditExpense] = useState({ name: "", category: "", amount: "" });
+  const [editIncomeIdx, setEditIncomeIdx] = useState<number | null>(null);
+  const [editIncome, setEditIncome] = useState({ name: "", amount: "" });
+
   const chatId = typeof window !== "undefined" ? localStorage.getItem("quartly_chatId") || "default" : "default";
 
-  useEffect(() => {
+  async function fetchData() {
     if (!chatId || chatId === "default") { setLoading(false); return; }
-    fetch(`/api/expenses?chatId=${chatId}`)
-      .then((r) => r.json())
-      .then((d) => { if (d.ok) setData(d); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [chatId]);
+    setLoading(true);
+    try {
+      const r = await fetch(`/api/expenses?chatId=${chatId}`);
+      const d = await r.json();
+      if (d.ok) setData(d);
+    } catch { /* ignore */ }
+    setLoading(false);
+  }
+
+  useEffect(() => { fetchData(); }, [chatId]);
+
+  async function addExpense() {
+    if (!newExpense.name || !newExpense.amount) return;
+    await fetch("/api/expenses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chatId, type: "expense", ...newExpense, amount: Number(newExpense.amount) }),
+    });
+    setNewExpense({ name: "", category: "General", amount: "" });
+    fetchData();
+  }
+
+  async function addIncome() {
+    if (!newIncome.name || !newIncome.amount) return;
+    await fetch("/api/expenses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chatId, type: "income", ...newIncome, amount: Number(newIncome.amount) }),
+    });
+    setNewIncome({ name: "", amount: "" });
+    fetchData();
+  }
+
+  async function updateExpense(idx: number) {
+    await fetch("/api/expenses", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chatId, type: "expense", index: idx, ...editExpense }),
+    });
+    setEditingIdx(null);
+    fetchData();
+  }
+
+  async function updateIncome(idx: number) {
+    await fetch("/api/expenses", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chatId, type: "income", index: idx, name: editIncome.name, amount: Number(editIncome.amount) }),
+    });
+    setEditIncomeIdx(null);
+    fetchData();
+  }
+
+  async function deleteExpense(idx: number) {
+    await fetch("/api/expenses", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chatId, type: "expense", index: idx }),
+    });
+    fetchData();
+  }
+
+  async function deleteIncome(idx: number) {
+    await fetch("/api/expenses", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chatId, type: "income", index: idx }),
+    });
+    fetchData();
+  }
 
   const balance = data ? data.totalIncome - data.totalExpenses : 0;
 
@@ -58,15 +130,12 @@ export default function TransactionsPage() {
       </Column>
 
       {loading ? (
-        <Text>Cargando gastos...</Text>
+        <Text>Cargando...</Text>
       ) : !data ? (
         <Card padding="l" radius="m" fillWidth>
           <Column horizontal="center" gap="s" padding="l">
             <Text variant="body-default-m" onBackground="neutral-weak">
-              No hay datos de gastos. Importa tus datos primero.
-            </Text>
-            <Text variant="body-default-s" onBackground="neutral-weak">
-              Despliega a Vercel y visita /api/import para cargar tus gastos desde el CSV.
+              No hay datos de gastos. Importa tus datos con /api/import en producción.
             </Text>
           </Column>
         </Card>
@@ -130,12 +199,47 @@ export default function TransactionsPage() {
                     </div>
                     <Text variant="heading-strong-m">${cat.total.toLocaleString()}</Text>
                     <Column gap="xs">
-                      {cat.items.map((item) => (
-                        <Row key={item.name} vertical="center" horizontal="between">
-                          <Text variant="body-default-s" onBackground="neutral-weak">{item.name}</Text>
-                          <Text variant="label-default-s">${item.amount.toLocaleString()}</Text>
-                        </Row>
-                      ))}
+                      {cat.items.map((item, i) => {
+                        const globalIdx = data.items.indexOf(item);
+                        return (
+                          <Row key={item.name} vertical="center" horizontal="between" wrap gap="s">
+                            {editingIdx === globalIdx ? (
+                              <Row gap="s" vertical="center" wrap>
+                                <Input
+                                  id={`edit-name-${globalIdx}`}
+                                  value={editExpense.name}
+                                  onChange={(e) => setEditExpense({ ...editExpense, name: e.target.value })}
+                                  style={{ minWidth: 100 }}
+                                />
+                                <Input
+                                  id={`edit-cat-${globalIdx}`}
+                                  value={editExpense.category}
+                                  onChange={(e) => setEditExpense({ ...editExpense, category: e.target.value })}
+                                  style={{ minWidth: 80 }}
+                                />
+                                <Input
+                                  id={`edit-amt-${globalIdx}`}
+                                  type="number"
+                                  value={editExpense.amount}
+                                  onChange={(e) => setEditExpense({ ...editExpense, amount: e.target.value })}
+                                  style={{ minWidth: 60 }}
+                                />
+                                <Button size="s" onClick={() => updateExpense(globalIdx)}>Guardar</Button>
+                                <Button size="s" variant="secondary" onClick={() => setEditingIdx(null)}>X</Button>
+                              </Row>
+                            ) : (
+                              <>
+                                <Text variant="body-default-s" onBackground="neutral-weak">{item.name}</Text>
+                                <Row gap="s" vertical="center">
+                                  <Text variant="label-default-s">${item.amount.toLocaleString()}</Text>
+                                  <IconButton icon="edit" size="s" variant="tertiary" onClick={() => { setEditingIdx(globalIdx); setEditExpense({ name: item.name, category: item.category, amount: String(item.amount) }); }} tooltip="Editar" />
+                                  <IconButton icon="trash" size="s" variant="danger" onClick={() => deleteExpense(globalIdx)} tooltip="Eliminar" />
+                                </Row>
+                              </>
+                            )}
+                          </Row>
+                        );
+                      })}
                     </Column>
                   </Column>
                 </Card>
@@ -143,20 +247,60 @@ export default function TransactionsPage() {
             })}
           </Grid>
 
-          {/* Income Sources */}
+          {/* Add Expense */}
+          <Card padding="m" radius="m" fillWidth>
+            <Column gap="s">
+              <Text variant="heading-strong-s">Agregar Gasto</Text>
+              <Row gap="s" vertical="center" wrap>
+                <Input id="add-exp-name" label="Nombre" value={newExpense.name} onChange={(e) => setNewExpense({ ...newExpense, name: e.target.value })} style={{ minWidth: 140 }} />
+                <Input id="add-exp-cat" label="Categoría" value={newExpense.category} onChange={(e) => setNewExpense({ ...newExpense, category: e.target.value })} style={{ minWidth: 120 }} />
+                <Input id="add-exp-amt" label="Monto" type="number" value={newExpense.amount} onChange={(e) => setNewExpense({ ...newExpense, amount: e.target.value })} style={{ minWidth: 100 }} />
+                <Button onClick={addExpense} disabled={!newExpense.name || !newExpense.amount}>+ Agregar</Button>
+              </Row>
+            </Column>
+          </Card>
+
+          {/* Income */}
           <Heading variant="heading-strong-m">Ingresos</Heading>
           <Card padding="m" radius="m" fillWidth>
             <Column gap="s">
-              {data.income.map((inc) => (
-                <Row key={inc.name} vertical="center" horizontal="between">
-                  <Text variant="body-default-m">{inc.name}</Text>
-                  <Text variant="label-default-l" onBackground="success-medium">+${inc.amount.toLocaleString()}</Text>
+              {data.income.map((inc, i) => (
+                <Row key={inc.name} vertical="center" horizontal="between" wrap gap="s">
+                  {editIncomeIdx === i ? (
+                    <Row gap="s" vertical="center" wrap>
+                      <Input id={`inc-name-${i}`} value={editIncome.name} onChange={(e) => setEditIncome({ ...editIncome, name: e.target.value })} style={{ minWidth: 120 }} />
+                      <Input id={`inc-amt-${i}`} type="number" value={editIncome.amount} onChange={(e) => setEditIncome({ ...editIncome, amount: e.target.value })} style={{ minWidth: 80 }} />
+                      <Button size="s" onClick={() => updateIncome(i)}>Guardar</Button>
+                      <Button size="s" variant="secondary" onClick={() => setEditIncomeIdx(null)}>X</Button>
+                    </Row>
+                  ) : (
+                    <>
+                      <Text variant="body-default-m">{inc.name}</Text>
+                      <Row gap="s" vertical="center">
+                        <Text variant="label-default-l" onBackground="success-medium">+${inc.amount.toLocaleString()}</Text>
+                        <IconButton icon="edit" size="s" variant="tertiary" onClick={() => { setEditIncomeIdx(i); setEditIncome({ name: inc.name, amount: String(inc.amount) }); }} tooltip="Editar" />
+                        <IconButton icon="trash" size="s" variant="danger" onClick={() => deleteIncome(i)} tooltip="Eliminar" />
+                      </Row>
+                    </>
+                  )}
                 </Row>
               ))}
               <div style={{ height: 1, background: "var(--neutral-alpha-weak)", margin: "4px 0" }} />
               <Row vertical="center" horizontal="between">
                 <Text variant="label-strong-s">Total Ingresos</Text>
                 <Text variant="label-strong-l" onBackground="success-medium">+${data.totalIncome.toLocaleString()}</Text>
+              </Row>
+            </Column>
+          </Card>
+
+          {/* Add Income */}
+          <Card padding="m" radius="m" fillWidth>
+            <Column gap="s">
+              <Text variant="heading-strong-s">Agregar Ingreso</Text>
+              <Row gap="s" vertical="center" wrap>
+                <Input id="add-inc-name" label="Nombre" value={newIncome.name} onChange={(e) => setNewIncome({ ...newIncome, name: e.target.value })} style={{ minWidth: 140 }} />
+                <Input id="add-inc-amt" label="Monto" type="number" value={newIncome.amount} onChange={(e) => setNewIncome({ ...newIncome, amount: e.target.value })} style={{ minWidth: 100 }} />
+                <Button onClick={addIncome} disabled={!newIncome.name || !newIncome.amount}>+ Agregar</Button>
               </Row>
             </Column>
           </Card>
@@ -187,7 +331,7 @@ export default function TransactionsPage() {
           </Card>
 
           <Text variant="label-default-xs" onBackground="neutral-weak">
-            📋 Gastos del mes basados en tu CSV · Importa con /api/import en producción
+            📋 Datos guardados en KV · Los cambios persisten
           </Text>
         </>
       )}
