@@ -34,6 +34,9 @@ export default function FavoritesPage() {
   const [stocks, setStocks] = useState<FavStock[]>([]);
   const [etfs, setEtfs] = useState<FavEtf[]>([]);
   const [loading, setLoading] = useState(true);
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [exploreData, setExploreData] = useState<string | null>(null);
   const [tab, setTab] = useState<TabType>("cryptos");
   const [addTicker, setAddTicker] = useState("");
   const [addType, setAddType] = useState<TabType>("cryptos");
@@ -45,15 +48,22 @@ export default function FavoritesPage() {
 
   const fetchFavorites = useCallback(async () => {
     setLoading(true);
+    setErrorMsg(null);
+    setDebugInfo(null);
     try {
       const res = await fetch(`/api/dashboard/favorites?chatId=${chatId}`);
       const data = await res.json();
+      setDebugInfo(JSON.stringify(data.debug || data, null, 2));
       if (data.ok) {
-        setStocks(data.stocks);
-        setEtfs(data.etfs);
-        setCryptos(data.cryptos);
+        setStocks(data.stocks || []);
+        setEtfs(data.etfs || []);
+        setCryptos(data.cryptos || []);
+      } else {
+        setErrorMsg(data.error || "Error desconocido");
       }
-    } catch { /* ignore */ }
+    } catch (e) {
+      setErrorMsg(String(e));
+    }
     setLoading(false);
   }, [chatId]);
 
@@ -193,11 +203,50 @@ export default function FavoritesPage() {
         </Grid>
       )}
 
-      <Row gap="s" vertical="center" padding="s">
-        <Text variant="label-default-xs" onBackground="neutral-weak">
-          🔄 Datos sincronizados con KV — los cambios se reflejan en Telegram y viceversa.
-        </Text>
-      </Row>
+      <Card padding="m" radius="m" fillWidth>
+        <Column gap="s">
+          <Text variant="label-default-xs" onBackground="neutral-weak">
+            Chat ID usado: <strong>{chatId}</strong>
+          </Text>
+          {errorMsg && (
+            <Text variant="label-default-xs" onBackground="danger-weak">
+              Error: {errorMsg}
+            </Text>
+          )}
+          {debugInfo && (
+            <details>
+              <summary style={{ cursor: "pointer", fontSize: 12, color: "var(--neutral-on-background-weak)" }}>Debug: Respuesta del API</summary>
+              <pre style={{ fontSize: 11, overflow: "auto", maxHeight: 200, marginTop: 8, padding: 8, background: "var(--neutral-alpha-weak)", borderRadius: 8 }}>
+                {debugInfo}
+              </pre>
+            </details>
+          )}
+          <Row gap="s" vertical="center">
+            <Button size="s" variant="tertiary" onClick={async () => {
+              try {
+                const res = await fetch("/api/dashboard/favorites?all=true");
+                const data = await res.json();
+                setExploreData(JSON.stringify(data, null, 2));
+              } catch { setExploreData("Error al explorar KV"); }
+            }}>
+              Explorar KV (todos los usuarios)
+            </Button>
+            {exploreData && (
+              <Button size="s" variant="tertiary" onClick={() => setExploreData(null)}>
+                Cerrar
+              </Button>
+            )}
+          </Row>
+          {exploreData && (
+            <pre style={{ fontSize: 11, overflow: "auto", maxHeight: 300, padding: 8, background: "var(--neutral-alpha-weak)", borderRadius: 8 }}>
+              {exploreData}
+            </pre>
+          )}
+          <Text variant="label-default-xs" onBackground="neutral-weak">
+            🔄 Datos sincronizados con KV — los cambios se reflejan en Telegram y viceversa.
+          </Text>
+        </Column>
+      </Card>
     </Column>
   );
 }

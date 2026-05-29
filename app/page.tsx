@@ -9,9 +9,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [registeredUsers, setRegisteredUsers] = useState<string[]>([]);
-  const [usersLoading, setUsersLoading] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
+  const [registeredUsers, setRegisteredUsers] = useState<string[]>([]);
   const [manualChatId, setManualChatId] = useState("");
   const router = useRouter();
 
