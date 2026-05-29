@@ -4,6 +4,19 @@ import { useEffect, useState, useCallback } from "react";
 import { Column, Row, Heading, Text, Badge, Card, Button, Input, IconButton, Grid } from "@once-ui-system/core";
 import { formatPercent } from "@/lib/formatFinance";
 
+function Sparkline({ data, color, width = 120, height = 28 }: { data: number[]; color?: string; width?: number; height?: number }) {
+  if (!data || data.length < 2) return null;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const points = data.map((v, i) => `${(i / (data.length - 1)) * width},${height - ((v - min) / range) * (height - 4) - 2}`).join(" ");
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ flexShrink: 0 }}>
+      <polyline points={points} fill="none" stroke={color || "var(--brand-on-background-strong)"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 interface EarningEvent {
   symbol: string;
   actual: number | null;
@@ -41,12 +54,14 @@ interface StockDetail {
   earnings: EarningEvent[];
   analystSignals: RecommendationTrend[];
   quote: QuoteData | null;
+  sparkline: number[];
 }
 
 interface EtfDetail {
   ticker: string;
   logo: string | null;
   quote: QuoteData | null;
+  sparkline: number[];
 }
 
 interface CryptoDetail {
@@ -56,6 +71,7 @@ interface CryptoDetail {
   change24h: number | null;
   change7d: number | null;
   marketCapUsd: number | null;
+  sparkline: number[];
 }
 
 interface FavStock { ticker: string; name: string; sector: string; type: "stock"; }
@@ -342,6 +358,9 @@ export default function FavoritesPage() {
                             Cap: ${(detail.marketCapUsd / 1e9).toFixed(2)}B
                           </Text>
                         )}
+                        {detail?.sparkline && detail.sparkline.length > 1 && (
+                          <Sparkline data={detail.sparkline} color={detail.change24h != null && detail.change24h >= 0 ? "var(--chart-positive, #00D084)" : "var(--chart-negative, #FF4D4D)"} />
+                        )}
                       </Column>
                     </Row>
                     <IconButton icon="trash" size="s" variant="danger" onClick={() => handleRemove(c.ticker, "crypto")} tooltip="Eliminar" />
@@ -379,6 +398,9 @@ export default function FavoritesPage() {
                           </Text>
                         )}
                         <Text variant="label-default-xs" onBackground="neutral-weak">{e.sector || "—"}</Text>
+                        {detail?.sparkline && detail.sparkline.length > 1 && (
+                          <Sparkline data={detail.sparkline} color={detail.quote && detail.quote.d >= 0 ? "var(--chart-positive, #00D084)" : "var(--chart-negative, #FF4D4D)"} />
+                        )}
                       </Column>
                     </Row>
                     <IconButton icon="trash" size="s" variant="danger" onClick={() => handleRemove(e.ticker, "etf")} tooltip="Eliminar" />
@@ -416,6 +438,10 @@ export default function FavoritesPage() {
                           {" "}{detail.quote.d >= 0 ? "+" : ""}{detail.quote.d.toFixed(2)} ({detail.quote.dp >= 0 ? "+" : ""}{detail.quote.dp.toFixed(2)}%)
                         </Text>
                       </Text>
+                    )}
+
+                    {detail?.sparkline && detail.sparkline.length > 1 && (
+                      <Sparkline data={detail.sparkline} color={detail.quote && detail.quote.d >= 0 ? "var(--chart-positive, #00D084)" : "var(--chart-negative, #FF4D4D)"} />
                     )}
 
                     {detail && detail.earnings.length > 0 && (

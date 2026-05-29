@@ -25,7 +25,7 @@ const navItems: NavItem[] = [
   { label: "Watchlist", href: "/dashboard/watchlist", icon: "watchlist" },
   { label: "Portfolio", href: "/dashboard/portfolio", icon: "portfolio" },
   { label: "Favoritos", href: "/dashboard/favorites", icon: "bolt" },
-  { label: "Movimientos", href: "/dashboard/transactions", icon: "transactions" },
+  { label: "Gastos", href: "/dashboard/transactions", icon: "transactions" },
   { label: "Finanzas", href: "/dashboard/finance", icon: "finance" },
   { label: "Calendario", href: "/dashboard/calendar", icon: "calendar" },
 ];

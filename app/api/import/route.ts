@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { addStock, addEtf, addCrypto, registerUser } from "@/lib/kv";
 import { addPosition } from "@/lib/kv-portfolio";
 import type { PortfolioPosition } from "@/lib/types";
+import { kv } from "@vercel/kv";
 
 const CHAT_ID = "1057816434";
 
@@ -18,7 +19,7 @@ const ETFS = [
 const CRYPTOS = ["BTC","ETH"];
 
 const POSITIONS: Array<{
-  ticker: string; type: "sofipo" | "cetes"; amount: number;
+  ticker: string; type: "sofipo" | "cetes" | "crypto"; amount: number;
 }> = [
   { ticker: "OPEN", type: "sofipo", amount: 58534 },
   { ticker: "REVO", type: "sofipo", amount: 25147 },
@@ -29,12 +30,47 @@ const POSITIONS: Array<{
   { ticker: "FONDE", type: "sofipo", amount: 5272 },
   { ticker: "FINSUS", type: "sofipo", amount: 514 },
   { ticker: "CETES28", type: "cetes", amount: 14025 },
-  { ticker: "BTC.T", type: "sofipo", amount: 6875 },
-  { ticker: "ETH.T", type: "sofipo", amount: 762 },
-  { ticker: "BINANCE", type: "sofipo", amount: 2700 },
-  { ticker: "BITSO", type: "sofipo", amount: 1560 },
-  { ticker: "BTC.B", type: "sofipo", amount: 19563 },
-  { ticker: "BTC.B2", type: "sofipo", amount: 4096 },
+  { ticker: "BTC.T", type: "crypto", amount: 6875 },
+  { ticker: "ETH.T", type: "crypto", amount: 762 },
+  { ticker: "BINANCE", type: "crypto", amount: 2700 },
+  { ticker: "BITSO", type: "crypto", amount: 1560 },
+  { ticker: "BTC.B", type: "crypto", amount: 19563 },
+  { ticker: "BTC.B2", type: "crypto", amount: 4096 },
+];
+
+interface ExpenseItem {
+  name: string;
+  category: string;
+  amount: number;
+  pct: number;
+}
+
+const EXPENSES: ExpenseItem[] = [
+  { name: "Renta", category: "Vivienda", amount: 3600, pct: 11.25 },
+  { name: "Agua", category: "Vivienda", amount: 45, pct: 0.14 },
+  { name: "Luz", category: "Vivienda", amount: 65, pct: 0.20 },
+  { name: "Internet", category: "Vivienda", amount: 190, pct: 0.59 },
+  { name: "Gas", category: "Vivienda", amount: 230, pct: 0.72 },
+  { name: "Plan Telcel", category: "Entretenimiento", amount: 230, pct: 0.72 },
+  { name: "Merced", category: "Comida", amount: 1800, pct: 5.63 },
+  { name: "Chedraui", category: "Comida", amount: 1900, pct: 5.94 },
+  { name: "Alberca", category: "Entretenimiento", amount: 200, pct: 0.63 },
+  { name: "Spotify", category: "Entretenimiento", amount: 85, pct: 0.27 },
+  { name: "Tratamiento", category: "Comida", amount: 600, pct: 1.88 },
+  { name: "Pisto y pan", category: "Entretenimiento", amount: 1300, pct: 4.06 },
+  { name: "Corte cabello", category: "Comida", amount: 60, pct: 0.19 },
+  { name: "Garrafón", category: "Comida", amount: 110, pct: 0.34 },
+  { name: "Pechuga", category: "Comida", amount: 240, pct: 0.75 },
+  { name: "Variables", category: "Entretenimiento", amount: 1000, pct: 3.13 },
+  { name: "Tortillas/basura", category: "Comida", amount: 60, pct: 0.19 },
+  { name: "Bruno", category: "Comida", amount: 450, pct: 1.41 },
+];
+
+const INCOME_ITEMS = [
+  { name: "Amex", amount: 19500 },
+  { name: "Vales", amount: 4000 },
+  { name: "Inversión", amount: 1000 },
+  { name: "Bonos", amount: 7500 },
 ];
 
 export async function GET() {
@@ -42,20 +78,9 @@ export async function GET() {
 
   await registerUser(CHAT_ID);
 
-  for (const t of STOCKS) {
-    const r = await addStock(CHAT_ID, t);
-    results.push(r.ok ? `stock ${t} ✅` : `stock ${t} ❌ ${r.error}`);
-  }
-
-  for (const t of ETFS) {
-    const r = await addEtf(CHAT_ID, t);
-    results.push(r.ok ? `etf ${t} ✅` : `etf ${t} ❌ ${r.error}`);
-  }
-
-  for (const t of CRYPTOS) {
-    const r = await addCrypto(CHAT_ID, t);
-    results.push(r.ok ? `crypto ${t} ✅` : `crypto ${t} ❌ ${r.error}`);
-  }
+  for (const t of STOCKS) results.push(`stock ${t} ${(await addStock(CHAT_ID, t)).ok ? "✅" : "❌"}`);
+  for (const t of ETFS) results.push(`etf ${t} ${(await addEtf(CHAT_ID, t)).ok ? "✅" : "❌"}`);
+  for (const t of CRYPTOS) results.push(`crypto ${t} ${(await addCrypto(CHAT_ID, t)).ok ? "✅" : "❌"}`);
 
   for (const p of POSITIONS) {
     const pos: PortfolioPosition = {
@@ -66,12 +91,23 @@ export async function GET() {
       buyPrice: p.amount,
       quantity: 1,
       buyDate: "2026-01-01",
-      notes: p.type === "sofipo" ? "SOFIPO" : "CETES",
+      notes: p.type === "sofipo" ? "SOFIPO" : p.type === "cetes" ? "CETES" : "Crypto",
       createdAt: new Date().toISOString(),
     };
     await addPosition(CHAT_ID, pos);
     results.push(`position ${p.ticker} (${p.type}) = $${p.amount} ✅`);
   }
+
+  const expenseKey = `expenses:${CHAT_ID}`;
+  await kv.set(expenseKey, {
+    items: EXPENSES,
+    income: INCOME_ITEMS,
+    totalExpenses: EXPENSES.reduce((s, e) => s + e.amount, 0),
+    totalIncome: INCOME_ITEMS.reduce((s, e) => s + e.amount, 0),
+    updatedAt: new Date().toISOString(),
+  });
+  results.push(`expenses stored: ${EXPENSES.length} items ✅`);
+  results.push(`income stored: ${INCOME_ITEMS.length} items ✅`);
 
   return NextResponse.json({ ok: true, count: results.length, results });
 }

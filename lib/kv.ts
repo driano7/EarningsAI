@@ -229,6 +229,7 @@ export interface CachedTickerEarnings {
   quote: {
     c: number; d: number; dp: number; h: number; l: number; o: number; pc: number; t: number;
   } | null;
+  sparkline: number[];
   fetchedAt: number;
 }
 

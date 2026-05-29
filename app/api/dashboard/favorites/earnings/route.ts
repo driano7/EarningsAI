@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserStocks, getUserEtfs, getUserCryptos, getCachedTickerData, setCachedTickerData } from "@/lib/kv";
 import type { CachedTickerEarnings } from "@/lib/kv";
-import { getEarningsHistory, getRecommendationTrends, getQuote } from "@/lib/finnhub";
+import { getEarningsHistory, getRecommendationTrends, getQuote, getCandles } from "@/lib/finnhub";
 import type { EarningEvent, RecommendationTrend, QuoteData } from "@/lib/finnhub";
 import { getLogoUrl } from "@/lib/logo";
-import { getCryptoDetails } from "@/lib/coingecko";
-
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+import { getCryptoDetails, getCryptoHistory } from "@/lib/coingecko";
 
 interface StockDetail {
   ticker: string;
@@ -14,12 +12,14 @@ interface StockDetail {
   earnings: EarningEvent[];
   analystSignals: RecommendationTrend[];
   quote: QuoteData | null;
+  sparkline: number[];
 }
 
 interface EtfDetail {
   ticker: string;
   logo: string | null;
   quote: QuoteData | null;
+  sparkline: number[];
 }
 
 interface CryptoDetail {
@@ -29,6 +29,7 @@ interface CryptoDetail {
   change24h: number | null;
   change7d: number | null;
   marketCapUsd: number | null;
+  sparkline: number[];
 }
 
 async function fetchStockDetail(ticker: string): Promise<StockDetail> {
@@ -40,20 +41,24 @@ async function fetchStockDetail(ticker: string): Promise<StockDetail> {
       earnings: cached.earnings as EarningEvent[],
       analystSignals: cached.analystSignals as RecommendationTrend[],
       quote: cached.quote as QuoteData | null,
+      sparkline: cached.sparkline,
     };
   }
-  const [earnings, signals, quote, logo] = await Promise.all([
+  const [earnings, signals, quote, logo, candles] = await Promise.all([
     getEarningsHistory(ticker),
     getRecommendationTrends(ticker),
     getQuote(ticker),
     getLogoUrl(ticker, false),
+    getCandles(ticker),
   ]);
-  const detail: StockDetail = { ticker, logo, earnings, analystSignals: signals, quote };
+  const sparkline = candles?.closes?.slice(-30) || [];
+  const detail: StockDetail = { ticker, logo, earnings, analystSignals: signals, quote, sparkline };
   await setCachedTickerData(ticker, {
     logo,
     earnings: earnings as CachedTickerEarnings["earnings"],
     analystSignals: signals as CachedTickerEarnings["analystSignals"],
     quote: quote as CachedTickerEarnings["quote"],
+    sparkline,
   });
   return detail;
 }
@@ -75,16 +80,22 @@ export async function GET(req: NextRequest) {
       Promise.allSettled(stockTickers.map(fetchStockDetail)),
       Promise.allSettled(
         etfTickers.map(async (ticker) => {
-          const [quote, logo] = await Promise.all([
+          const [quote, logo, candles] = await Promise.all([
             getQuote(ticker),
             getLogoUrl(ticker, true),
+            getCandles(ticker),
           ]);
-          return { ticker, logo, quote } satisfies EtfDetail;
+          const sparkline = candles?.closes?.slice(-30) || [];
+          return { ticker, logo, quote, sparkline } satisfies EtfDetail;
         })
       ),
       Promise.allSettled(
         cryptoTickers.map(async (ticker) => {
-          const details = await getCryptoDetails(ticker);
+          const [details, history] = await Promise.all([
+            getCryptoDetails(ticker),
+            getCryptoHistory(ticker, 30),
+          ]);
+          const sparkline = (history?.prices || []).map((p) => p[1]).slice(-30);
           return {
             ticker,
             logo: details?.logo ?? null,
@@ -92,6 +103,7 @@ export async function GET(req: NextRequest) {
             change24h: details?.change24h ?? null,
             change7d: details?.change7d ?? null,
             marketCapUsd: details?.marketCapUsd ?? null,
+            sparkline,
           } satisfies CryptoDetail;
         })
       ),

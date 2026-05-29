@@ -227,6 +227,7 @@ export default function CalendarPage() {
               const isToday = day.date === today;
               const isSelected = day.date === selectedDate;
               const hasEvents = day.events.length > 0;
+              const hasUpcoming = day.events.some((e) => e.type === "upcoming");
               const maxDots = Math.min(day.events.length, 3);
               const extra = day.events.length - 3;
 
@@ -251,12 +252,22 @@ export default function CalendarPage() {
                     opacity: day.isCurrentMonth ? 1 : 0.3,
                     cursor: hasEvents ? "pointer" : "default",
                     transition: "all 0.15s ease",
+                    position: "relative",
                   }}
                   onClick={() => hasEvents && setSelectedDate(day.date)}
                 >
-                  <Text variant="label-default-s" onBackground={isSelected || isToday ? "brand-strong" : "neutral-strong"}>
-                    {day.day}
-                  </Text>
+                  <Row gap={4} vertical="center">
+                    <Text variant="label-default-s" onBackground={isSelected || isToday ? "brand-strong" : "neutral-strong"}>
+                      {day.day}
+                    </Text>
+                    {hasUpcoming && (
+                      <div style={{
+                        width: 7, height: 7, borderRadius: "50%",
+                        background: "var(--danger-on-background-strong, #FF4D4D)",
+                        flexShrink: 0,
+                      }} />
+                    )}
+                  </Row>
                   {hasEvents && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                       {day.events.slice(0, maxDots).map((ev, i) => (

@@ -221,12 +221,12 @@ export default function DashboardPage() {
             id: "monthly-bar",
             label: "Balance Mensual",
             content: (
-              <ChartCard title="Balance Mensual" subtitle="Ingresos vs Gastos (30d)" filename="monthly-balance">
+              <ChartCard title="Balance Mensual" subtitle="Ingresos vs Gastos (30d)" filename="monthly-balance" height={720}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={[]}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--neutral-alpha-weak)" />
-                    <XAxis dataKey="date" tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 11 }} />
-                    <YAxis tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 11 }} />
+                    <XAxis dataKey="date" tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 12 }} />
+                    <YAxis tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 12 }} />
                     <Tooltip
                       contentStyle={{
                         background: "var(--neutral-alpha-weak)",

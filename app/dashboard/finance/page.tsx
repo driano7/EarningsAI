@@ -133,13 +133,13 @@ export default function FinancePage() {
         ))}
       </Row>
 
-      <Grid columns="2" gap="m">
-        <ChartCard title="Ingresos vs Gastos" subtitle="Por mes" filename="ingresos-gastos">
+      <Grid columns="1" gap="m">
+        <ChartCard title="Ingresos vs Gastos" subtitle="Por mes" filename="ingresos-gastos" height={720}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={monthlyData.length > 0 ? monthlyData : [{ month: "Sin datos", income: 0, expense: 0, invest: 0 }]}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--neutral-alpha-weak)" />
-              <XAxis dataKey="month" tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 10 }} />
-              <YAxis tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 11 }} />
+              <XAxis dataKey="month" tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 12 }} />
+              <YAxis tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 12 }} />
               <Tooltip
                 contentStyle={{ background: "var(--neutral-alpha-weak)", border: "1px solid var(--neutral-alpha-medium)", borderRadius: 8 }}
               />
@@ -150,7 +150,8 @@ export default function FinancePage() {
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
-
+      </Grid>
+      <Grid columns="2" gap="m">
         <ChartCard title="Gastos por Categoría" subtitle="Distribución" filename="gastos-categoria">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
