@@ -97,7 +97,7 @@ export default function AddPositionModal({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: "rgba(0,0,0,0.6)",
+            backgroundColor: "rgba(0,0,0,0.88)",
             backdropFilter: "blur(4px)",
           }}
           onClick={(e) => {

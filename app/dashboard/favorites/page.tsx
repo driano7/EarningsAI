@@ -99,17 +99,21 @@ export default function FavoritesPage() {
 
   useEffect(() => {
     const stored = localStorage.getItem("quartly_chatId") || "";
-    setChatId(stored);
-    fetch("/api/auth/users").then((r) => r.json()).then((data) => {
-      if (data.ok && data.users.length > 0) {
-        setKnownUsers(data.users);
-        if (stored && !data.users.includes(stored)) {
-          setShowUserPicker(true);
-        } else if (!stored) {
-          setShowUserPicker(true);
+    if (stored) {
+      setChatId(stored);
+    } else {
+      fetch("/api/auth/users").then((r) => r.json()).then((data) => {
+        if (data.ok && data.users.length > 0) {
+          setKnownUsers(data.users);
+          if (data.users.length === 1) {
+            setChatId(data.users[0]);
+            localStorage.setItem("quartly_chatId", data.users[0]);
+          } else {
+            setShowUserPicker(true);
+          }
         }
-      }
-    }).catch(() => {});
+      }).catch(() => {});
+    }
   }, []);
 
   const fetchFavorites = useCallback(async () => {
@@ -122,17 +126,10 @@ export default function FavoritesPage() {
         setStocks(data.stocks || []);
         setEtfs(data.etfs || []);
         setCryptos(data.cryptos || []);
-        if (data.stocks.length === 0 && data.etfs.length === 0 && data.cryptos.length === 0) {
-          const users = data.debug?.allUsers || knownUsers;
-          if (users.length > 0) {
-            setKnownUsers(users);
-            setShowUserPicker(true);
-          }
-        }
       }
     } catch { /* ignore */ }
     setLoading(false);
-  }, [chatId, knownUsers]);
+  }, [chatId]);
 
   const fetchEarnings = useCallback(async () => {
     if (!chatId) return;

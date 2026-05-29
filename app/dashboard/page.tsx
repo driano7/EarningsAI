@@ -187,33 +187,54 @@ export default function DashboardPage() {
             label: "Portafolio",
             content: (
               <ChartCard title="Distribución del Portafolio" subtitle="Por activo" filename="portfolio-allocation">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={data.portfolioAllocation}
-                      dataKey="value"
-                      nameKey="ticker"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={90}
-                      paddingAngle={2}
-                    >
-                      {data.portfolioAllocation.map((_, i) => (
-                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        background: "var(--neutral-alpha-weak)",
-                        border: "1px solid var(--neutral-alpha-medium)",
-                        borderRadius: 8,
-                        backdropFilter: "blur(12px)",
-                      }}
-                      formatter={(value) => [formatCurrency(Number(value)), "Valor"]}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                <Row gap="l" vertical="center" fillWidth wrap>
+                  <div style={{ width: "55%", minWidth: 200, height: 280 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={data.portfolioAllocation}
+                          dataKey="value"
+                          nameKey="ticker"
+                          cx="50%" cy="50%"
+                          innerRadius={60} outerRadius={90}
+                          paddingAngle={2}
+                        >
+                          {data.portfolioAllocation.map((_, i) => (
+                            <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            background: "var(--neutral-alpha-weak)",
+                            border: "1px solid var(--neutral-alpha-medium)",
+                            borderRadius: 8,
+                            backdropFilter: "blur(12px)",
+                          }}
+                          formatter={(value) => [formatCurrency(Number(value)), "Valor"]}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <Column gap="s" style={{ flex: 1, minWidth: 160 }}>
+                    {data.portfolioAllocation.map((item, i) => {
+                      const pct = data.portfolioAllocation.reduce((s, a) => s + a.value, 0) > 0
+                        ? (item.value / data.portfolioAllocation.reduce((s, a) => s + a.value, 0)) * 100
+                        : 0;
+                      return (
+                        <Row key={item.ticker} gap="s" vertical="center">
+                          <div style={{
+                            width: 10, height: 10, borderRadius: 2,
+                            background: CHART_COLORS[i % CHART_COLORS.length],
+                            flexShrink: 0,
+                          }} />
+                          <Text variant="body-default-s" style={{ flex: 1 }}>{item.ticker}</Text>
+                          <Text variant="label-default-s">{formatCurrency(item.value)}</Text>
+                          <Text variant="label-default-xs" onBackground="neutral-weak">({pct.toFixed(1)}%)</Text>
+                        </Row>
+                      );
+                    })}
+                  </Column>
+                </Row>
               </ChartCard>
             ),
           },

@@ -109,5 +109,33 @@ export async function GET() {
   results.push(`expenses stored: ${EXPENSES.length} items ✅`);
   results.push(`income stored: ${INCOME_ITEMS.length} items ✅`);
 
+  /* Sync CSV expenses → finance transactions for Finanzas page */
+  const finKey = `finance:${CHAT_ID}:transactions`;
+  const finTxns = [];
+  for (const exp of EXPENSES) {
+    finTxns.push({
+      id: crypto.randomUUID(),
+      type: "expense",
+      amount: exp.amount,
+      category: exp.category,
+      description: exp.name,
+      date: "2026-01-28",
+      createdAt: Date.now(),
+    });
+  }
+  for (const inc of INCOME_ITEMS) {
+    finTxns.push({
+      id: crypto.randomUUID(),
+      type: "income",
+      amount: inc.amount,
+      category: "Ingreso",
+      description: inc.name,
+      date: "2026-01-28",
+      createdAt: Date.now(),
+    });
+  }
+  await kv.set(finKey, finTxns);
+  results.push(`finance transactions synced: ${finTxns.length} ✅`);
+
   return NextResponse.json({ ok: true, count: results.length, results });
 }
