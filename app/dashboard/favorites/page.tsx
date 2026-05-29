@@ -4,6 +4,51 @@ import { useEffect, useState, useCallback } from "react";
 import { Column, Row, Heading, Text, Badge, Card, Button, Input, IconButton, Grid } from "@once-ui-system/core";
 import { formatPercent } from "@/lib/formatFinance";
 
+interface EarningEvent {
+  symbol: string;
+  actual: number | null;
+  estimate: number;
+  surprise: number | null;
+  surprisePercent: number | null;
+  year: number;
+  quarter: number;
+  period: string;
+}
+
+interface RecommendationTrend {
+  buy: number;
+  hold: number;
+  sell: number;
+  strongBuy: number;
+  strongSell: number;
+  period: string;
+}
+
+interface QuoteData {
+  c: number;
+  d: number;
+  dp: number;
+  h: number;
+  l: number;
+  o: number;
+  pc: number;
+  t: number;
+}
+
+interface StockDetail {
+  ticker: string;
+  logo: string | null;
+  earnings: EarningEvent[];
+  analystSignals: RecommendationTrend[];
+  quote: QuoteData | null;
+}
+
+interface EtfDetail {
+  ticker: string;
+  logo: string | null;
+  quote: QuoteData | null;
+}
+
 interface FavStock { ticker: string; name: string; sector: string; type: "stock"; }
 interface FavEtf { ticker: string; name: string; sector: string; type: "etf"; }
 interface FavCrypto { ticker: string; name: string; priceUsd: number | null; change24h: number | null; type: "crypto"; }
@@ -14,13 +59,18 @@ export default function FavoritesPage() {
   const [cryptos, setCryptos] = useState<FavCrypto[]>([]);
   const [stocks, setStocks] = useState<FavStock[]>([]);
   const [etfs, setEtfs] = useState<FavEtf[]>([]);
+  const [stockDetails, setStockDetails] = useState<Map<string, StockDetail>>(new Map());
+  const [etfDetails, setEtfDetails] = useState<Map<string, EtfDetail>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [earningsLoading, setEarningsLoading] = useState(false);
   const [tab, setTab] = useState<TabType>("cryptos");
   const [addTicker, setAddTicker] = useState("");
   const [adding, setAdding] = useState(false);
   const [chatId, setChatId] = useState<string>("");
   const [knownUsers, setKnownUsers] = useState<string[]>([]);
   const [showUserPicker, setShowUserPicker] = useState(false);
+  const [cachedAt, setCachedAt] = useState<string | null>(null);
+  const [logoErrors, setLogoErrors] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const stored = localStorage.getItem("quartly_chatId") || "";
@@ -57,9 +107,29 @@ export default function FavoritesPage() {
       }
     } catch { /* ignore */ }
     setLoading(false);
+  }, [chatId, knownUsers]);
+
+  const fetchEarnings = useCallback(async () => {
+    if (!chatId) return;
+    setEarningsLoading(true);
+    try {
+      const res = await fetch(`/api/dashboard/favorites/earnings?chatId=${chatId}`);
+      const data = await res.json();
+      if (data.ok) {
+        const sMap = new Map<string, StockDetail>();
+        for (const s of data.stocks) sMap.set(s.ticker, s);
+        setStockDetails(sMap);
+        const eMap = new Map<string, EtfDetail>();
+        for (const e of data.etfs) eMap.set(e.ticker, e);
+        setEtfDetails(eMap);
+        if (data.cachedAt) setCachedAt(data.cachedAt);
+      }
+    } catch { /* ignore */ }
+    setEarningsLoading(false);
   }, [chatId]);
 
   useEffect(() => { fetchFavorites(); }, [fetchFavorites]);
+  useEffect(() => { if (chatId) fetchEarnings(); }, [chatId, fetchEarnings]);
 
   function selectChatId(id: string) {
     localStorage.setItem("quartly_chatId", id);
@@ -91,6 +161,31 @@ export default function FavoritesPage() {
       });
       fetchFavorites();
     } catch { /* ignore */ }
+  }
+
+  function formatEarnings(earnings: EarningEvent[]): string {
+    if (!earnings || earnings.length === 0) return "";
+    const last = earnings[0];
+    const act = last.actual !== null && last.actual !== undefined ? `$${last.actual.toFixed(2)}` : "N/A";
+    const est = `$${last.estimate.toFixed(2)}`;
+    let beat = "";
+    if (last.surprisePercent !== null && last.surprisePercent !== undefined) {
+      const sign = last.surprisePercent >= 0 ? "+" : "";
+      beat = ` (${sign}${last.surprisePercent.toFixed(1)}% ${last.surprisePercent >= 0 ? "Beat ✅" : "Miss ❌"})`;
+    }
+    return `Q${last.quarter} ${last.year}: est ${est} → ${act}${beat}`;
+  }
+
+  function formatAnalystSignal(recs: RecommendationTrend[]): string {
+    if (!recs || recs.length === 0) return "";
+    const r = recs[0];
+    const parts: string[] = [];
+    if (r.strongBuy > 0) parts.push(`🟢${r.strongBuy}`);
+    if (r.buy > 0) parts.push(`🟢${r.buy}`);
+    if (r.hold > 0) parts.push(`⚪${r.hold}`);
+    if (r.sell > 0) parts.push(`🔴${r.sell}`);
+    if (r.strongSell > 0) parts.push(`🔴${r.strongSell}`);
+    return parts.join(" ");
   }
 
   const activeItems: FavItem[] = tab === "cryptos" ? cryptos : tab === "stocks" ? stocks : etfs;
@@ -139,18 +234,24 @@ export default function FavoritesPage() {
           <Heading variant="heading-strong-xl">Mis Favoritos</Heading>
           <Text variant="body-default-s" onBackground="neutral-weak">
             Chat ID: {chatId || "No configurado"}
+            {cachedAt && ` · Actualizado ${new Date(cachedAt).toLocaleDateString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`}
           </Text>
         </Column>
-        <Button size="s" variant="tertiary" onClick={() => {
-          localStorage.removeItem("quartly_chatId");
-          setChatId("");
-          setShowUserPicker(true);
-          fetch("/api/auth/users").then((r) => r.json()).then((d) => {
-            if (d.ok) setKnownUsers(d.users);
-          }).catch(() => {});
-        }}>
-          Cambiar cuenta
-        </Button>
+        <Row gap="s" wrap>
+          <Button size="s" variant="tertiary" onClick={() => { setStockDetails(new Map()); setEtfDetails(new Map()); fetchEarnings(); }}>
+            Recargar datos
+          </Button>
+          <Button size="s" variant="tertiary" onClick={() => {
+            localStorage.removeItem("quartly_chatId");
+            setChatId("");
+            setShowUserPicker(true);
+            fetch("/api/auth/users").then((r) => r.json()).then((d) => {
+              if (d.ok) setKnownUsers(d.users);
+            }).catch(() => {});
+          }}>
+            Cambiar cuenta
+          </Button>
+        </Row>
       </Row>
 
       <Row gap="s" wrap>
@@ -208,7 +309,9 @@ export default function FavoritesPage() {
                       <Column gap="xs">
                         <Text variant="body-default-s">{c.name}</Text>
                         <Text variant="heading-strong-m">
-                          {c.priceUsd !== null ? `$${c.priceUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
+                          {c.priceUsd !== null
+                            ? `$${c.priceUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                            : "—"}
                         </Text>
                         <Text variant="label-strong-s" onBackground={c.change24h !== null ? (c.change24h >= 0 ? "success-medium" : "danger-medium") : "neutral-weak"}>
                           {c.change24h !== null ? formatPercent(c.change24h) : "—"}
@@ -220,18 +323,93 @@ export default function FavoritesPage() {
                 </Card>
               );
             }
-            const s = item as FavStock | FavEtf;
+
+            if (item.type === "etf") {
+              const e = item as FavEtf;
+              const detail = etfDetails.get(e.ticker);
+              return (
+                <Card key={e.ticker} padding="m" radius="m" fillWidth>
+                  <Row vertical="center" horizontal="between">
+                    <Row gap="s" vertical="center">
+                      {detail?.logo && !logoErrors.has(e.ticker) && (
+                        <img
+                          src={detail.logo}
+                          alt={e.ticker}
+                          style={{ width: 28, height: 28, borderRadius: 6, objectFit: "contain" }}
+                          onError={() => setLogoErrors((prev) => new Set(prev).add(e.ticker))}
+                        />
+                      )}
+                      <Column gap="xs">
+                        <Row gap="s" vertical="center">
+                          <Badge textVariant="label-default-s" color="accent">{e.ticker}</Badge>
+                        </Row>
+                        <Text variant="body-default-s">{e.name}</Text>
+                        {detail?.quote && (
+                          <Text variant="heading-strong-s" onBackground={detail.quote.d >= 0 ? "success-medium" : "danger-medium"}>
+                            ${detail.quote.c.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            <Text variant="label-default-xs" onBackground={detail.quote.d >= 0 ? "success-medium" : "danger-medium"}>
+                              {" "}{detail.quote.d >= 0 ? "+" : ""}{detail.quote.d.toFixed(2)} ({detail.quote.dp >= 0 ? "+" : ""}{detail.quote.dp.toFixed(2)}%)
+                            </Text>
+                          </Text>
+                        )}
+                        <Text variant="label-default-xs" onBackground="neutral-weak">{e.sector || "—"}</Text>
+                      </Column>
+                    </Row>
+                    <IconButton icon="trash" size="s" variant="danger" onClick={() => handleRemove(e.ticker, "etf")} tooltip="Eliminar" />
+                  </Row>
+                </Card>
+              );
+            }
+
+            const s = item as FavStock;
+            const detail = stockDetails.get(s.ticker);
             return (
               <Card key={s.ticker} padding="m" radius="m" fillWidth>
-                <Row vertical="center" horizontal="between">
-                  <Row gap="s" vertical="center">
-                    <Badge textVariant="label-default-s" color={s.type === "etf" ? "accent" : "brand"}>{s.ticker}</Badge>
-                    <Column gap="xs">
-                      <Text variant="body-default-s">{s.name}</Text>
-                      <Text variant="label-default-xs" onBackground="neutral-weak">{s.sector || "—"}</Text>
-                    </Column>
-                  </Row>
-                  <IconButton icon="trash" size="s" variant="danger" onClick={() => handleRemove(s.ticker, s.type)} tooltip="Eliminar" />
+                <Row vertical="stretch" horizontal="between">
+                  <Column gap="s" fillWidth>
+                    <Row gap="s" vertical="center">
+                      {detail?.logo && !logoErrors.has(s.ticker) && (
+                        <img
+                          src={detail.logo}
+                          alt={s.ticker}
+                          style={{ width: 28, height: 28, borderRadius: 6, objectFit: "contain" }}
+                          onError={() => setLogoErrors((prev) => new Set(prev).add(s.ticker))}
+                        />
+                      )}
+                      <Badge textVariant="label-default-s" color="brand">{s.ticker}</Badge>
+                      <Row gap="xs" vertical="center">
+                        <Text variant="body-default-s">{s.name}</Text>
+                        <Text variant="label-default-xs" onBackground="neutral-weak">· {s.sector || "—"}</Text>
+                      </Row>
+                    </Row>
+
+                    {detail?.quote && (
+                      <Text variant="heading-strong-s" onBackground={detail.quote.d >= 0 ? "success-medium" : "danger-medium"}>
+                        ${detail.quote.c.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        <Text variant="label-default-xs" onBackground={detail.quote.d >= 0 ? "success-medium" : "danger-medium"}>
+                          {" "}{detail.quote.d >= 0 ? "+" : ""}{detail.quote.d.toFixed(2)} ({detail.quote.dp >= 0 ? "+" : ""}{detail.quote.dp.toFixed(2)}%)
+                        </Text>
+                      </Text>
+                    )}
+
+                    {detail && detail.earnings.length > 0 && (
+                      <Text variant="label-default-s" onBackground="neutral-medium">
+                        📋 {formatEarnings(detail.earnings)}
+                      </Text>
+                    )}
+
+                    {detail && detail.analystSignals.length > 0 && (
+                      <Row gap="xs" vertical="center">
+                        <Text variant="label-default-xs" onBackground="neutral-weak">🎯 Analistas:</Text>
+                        <Text variant="label-default-xs">{formatAnalystSignal(detail.analystSignals)}</Text>
+                      </Row>
+                    )}
+
+                    {earningsLoading && (
+                      <Text variant="label-default-xs" onBackground="neutral-weak">Cargando datos de reportes...</Text>
+                    )}
+                  </Column>
+                  <IconButton icon="trash" size="s" variant="danger" onClick={() => handleRemove(s.ticker, "stock")} tooltip="Eliminar" style={{ alignSelf: "flex-start" }} />
                 </Row>
               </Card>
             );
@@ -240,7 +418,7 @@ export default function FavoritesPage() {
       )}
 
       <Text variant="label-default-xs" onBackground="neutral-weak">
-        🔄 Datos sincronizados con KV — los cambios se reflejan en Telegram y viceversa.
+        🔄 Datos de reportes se actualizan cada 24h · Los cambios se sincronizan con Telegram
       </Text>
     </Column>
   );
