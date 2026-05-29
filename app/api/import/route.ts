@@ -78,6 +78,11 @@ export async function GET() {
 
   await registerUser(CHAT_ID);
 
+  /* Clear stale ticker cache so sparklines re-fetch fresh */
+  const cachedKeys = await kv.keys("ticker:data:*");
+  for (const k of cachedKeys) await kv.del(k);
+  results.push(`cleared ${cachedKeys.length} cached ticker entries ✅`);
+
   for (const t of STOCKS) results.push(`stock ${t} ${(await addStock(CHAT_ID, t)).ok ? "✅" : "❌"}`);
   for (const t of ETFS) results.push(`etf ${t} ${(await addEtf(CHAT_ID, t)).ok ? "✅" : "❌"}`);
   for (const t of CRYPTOS) results.push(`crypto ${t} ${(await addCrypto(CHAT_ID, t)).ok ? "✅" : "❌"}`);
@@ -112,25 +117,30 @@ export async function GET() {
   /* Sync CSV expenses → finance transactions for Finanzas page */
   const finKey = `finance:${CHAT_ID}:transactions`;
   const finTxns = [];
-  for (const exp of EXPENSES) {
+  const monthDates = ["2026-04-28", "2026-04-15", "2026-03-28", "2026-03-15", "2026-03-05", "2026-02-28", "2026-02-15", "2026-02-05", "2026-01-28", "2026-01-15", "2026-01-05", "2025-12-28", "2025-12-15", "2025-12-05", "2025-11-28", "2025-11-15", "2025-11-05", "2025-10-28"];
+  for (let i = 0; i < EXPENSES.length; i++) {
+    const exp = EXPENSES[i];
+    const date = monthDates[i % monthDates.length];
     finTxns.push({
       id: crypto.randomUUID(),
       type: "expense",
       amount: exp.amount,
       category: exp.category,
       description: exp.name,
-      date: "2026-01-28",
+      date,
       createdAt: Date.now(),
     });
   }
-  for (const inc of INCOME_ITEMS) {
+  for (let i = 0; i < INCOME_ITEMS.length; i++) {
+    const inc = INCOME_ITEMS[i];
+    const date = monthDates[(EXPENSES.length + i) % monthDates.length];
     finTxns.push({
       id: crypto.randomUUID(),
       type: "income",
       amount: inc.amount,
       category: "Ingreso",
       description: inc.name,
-      date: "2026-01-28",
+      date,
       createdAt: Date.now(),
     });
   }

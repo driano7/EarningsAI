@@ -188,7 +188,7 @@ export default function DashboardPage() {
             content: (
               <ChartCard title="Distribución del Portafolio" subtitle="Por activo" filename="portfolio-allocation">
                 <Row gap="l" vertical="center" fillWidth wrap>
-                  <div style={{ width: "55%", minWidth: 200, height: 280 }}>
+                  <div style={{ width: "50%", minWidth: 200, height: 280 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -215,24 +215,37 @@ export default function DashboardPage() {
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
-                  <Column gap="s" style={{ flex: 1, minWidth: 160 }}>
-                    {data.portfolioAllocation.map((item, i) => {
-                      const pct = data.portfolioAllocation.reduce((s, a) => s + a.value, 0) > 0
-                        ? (item.value / data.portfolioAllocation.reduce((s, a) => s + a.value, 0)) * 100
-                        : 0;
+                  <Column gap="m" style={{ flex: 1, minWidth: 200 }}>
+                    {(() => {
+                      const sorted = [...data.portfolioAllocation].sort((a, b) => b.value - a.value);
+                      const mid = Math.ceil(sorted.length / 2);
+                      const total = sorted.reduce((s, a) => s + a.value, 0);
+                      const cols = [sorted.slice(0, mid), sorted.slice(mid)];
                       return (
-                        <Row key={item.ticker} gap="s" vertical="center">
-                          <div style={{
-                            width: 10, height: 10, borderRadius: 2,
-                            background: CHART_COLORS[i % CHART_COLORS.length],
-                            flexShrink: 0,
-                          }} />
-                          <Text variant="body-default-s" style={{ flex: 1 }}>{item.ticker}</Text>
-                          <Text variant="label-default-s">{formatCurrency(item.value)}</Text>
-                          <Text variant="label-default-xs" onBackground="neutral-weak">({pct.toFixed(1)}%)</Text>
+                        <Row gap="l" fillWidth>
+                          {cols.map((col, ci) => (
+                            <Column key={ci} gap="s" fillWidth>
+                              {col.map((item, i) => {
+                                const idx = sorted.indexOf(item);
+                                const pct = total > 0 ? (item.value / total) * 100 : 0;
+                                return (
+                                  <Row key={item.ticker} gap="xs" vertical="center" fillWidth>
+                                    <div style={{
+                                      width: 8, height: 8, borderRadius: 2,
+                                      background: CHART_COLORS[idx % CHART_COLORS.length],
+                                      flexShrink: 0,
+                                    }} />
+                                    <Text variant="body-default-s" style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.ticker}</Text>
+                                    <Text variant="label-default-s" style={{ whiteSpace: "nowrap" }}>{formatCurrency(item.value)}</Text>
+                                    <Text variant="label-default-xs" onBackground="neutral-weak" style={{ whiteSpace: "nowrap" }}>({pct.toFixed(1)}%)</Text>
+                                  </Row>
+                                );
+                              })}
+                            </Column>
+                          ))}
                         </Row>
                       );
-                    })}
+                    })()}
                   </Column>
                 </Row>
               </ChartCard>

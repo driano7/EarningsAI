@@ -32,9 +32,19 @@ interface CryptoDetail {
   sparkline: number[];
 }
 
+/* Run fn for each item sequentially with a delay between calls */
+async function sequential<T, R>(items: T[], delay: number, fn: (item: T, i: number) => Promise<R>): Promise<R[]> {
+  const results: R[] = [];
+  for (let i = 0; i < items.length; i++) {
+    if (i > 0) await new Promise((r) => setTimeout(r, delay));
+    results.push(await fn(items[i], i));
+  }
+  return results;
+}
+
 async function fetchStockDetail(ticker: string): Promise<StockDetail> {
   const cached = await getCachedTickerData(ticker);
-  if (cached) {
+  if (cached && cached.sparkline && cached.sparkline.length > 1) {
     return {
       ticker,
       logo: cached.logo,
@@ -53,13 +63,44 @@ async function fetchStockDetail(ticker: string): Promise<StockDetail> {
   ]);
   const sparkline = candles?.closes?.slice(-30) || [];
   const detail: StockDetail = { ticker, logo, earnings, analystSignals: signals, quote, sparkline };
-  await setCachedTickerData(ticker, {
-    logo,
-    earnings: earnings as CachedTickerEarnings["earnings"],
-    analystSignals: signals as CachedTickerEarnings["analystSignals"],
-    quote: quote as CachedTickerEarnings["quote"],
-    sparkline,
-  });
+  if (sparkline.length > 1) {
+    await setCachedTickerData(ticker, {
+      logo,
+      earnings: earnings as CachedTickerEarnings["earnings"],
+      analystSignals: signals as CachedTickerEarnings["analystSignals"],
+      quote: quote as CachedTickerEarnings["quote"],
+      sparkline,
+    });
+  }
+  return detail;
+}
+
+async function fetchEtfDetail(ticker: string): Promise<EtfDetail> {
+  const cached = await getCachedTickerData(ticker);
+  if (cached && cached.sparkline && cached.sparkline.length > 1) {
+    return {
+      ticker,
+      logo: cached.logo,
+      quote: cached.quote as QuoteData | null,
+      sparkline: cached.sparkline,
+    };
+  }
+  const [quote, logo, candles] = await Promise.all([
+    getQuote(ticker),
+    getLogoUrl(ticker, true),
+    getCandles(ticker),
+  ]);
+  const sparkline = candles?.closes?.slice(-30) || [];
+  const detail: EtfDetail = { ticker, logo, quote, sparkline };
+  if (sparkline.length > 1) {
+    await setCachedTickerData(ticker, {
+      logo,
+      earnings: [] as CachedTickerEarnings["earnings"],
+      analystSignals: [] as CachedTickerEarnings["analystSignals"],
+      quote: quote as CachedTickerEarnings["quote"],
+      sparkline,
+    });
+  }
   return detail;
 }
 
@@ -76,21 +117,17 @@ export async function GET(req: NextRequest) {
       getUserCryptos(chatId).catch(() => [] as string[]),
     ]);
 
-    const [stockDetails, etfDetails, cryptoDetails] = await Promise.all([
-      Promise.allSettled(stockTickers.map(fetchStockDetail)),
-      Promise.allSettled(
-        etfTickers.map(async (ticker) => {
-          const [quote, logo, candles] = await Promise.all([
-            getQuote(ticker),
-            getLogoUrl(ticker, true),
-            getCandles(ticker),
-          ]);
-          const sparkline = candles?.closes?.slice(-30) || [];
-          return { ticker, logo, quote, sparkline } satisfies EtfDetail;
-        })
-      ),
-      Promise.allSettled(
-        cryptoTickers.map(async (ticker) => {
+    const [stocks, etfs, cryptos] = await Promise.all([
+      sequential(stockTickers, 350, async (ticker) => {
+        try { return await fetchStockDetail(ticker); }
+        catch { return null; }
+      }),
+      sequential(etfTickers, 350, async (ticker) => {
+        try { return await fetchEtfDetail(ticker); }
+        catch { return null; }
+      }),
+      sequential(cryptoTickers, 200, async (ticker) => {
+        try {
           const [details, history] = await Promise.all([
             getCryptoDetails(ticker),
             getCryptoHistory(ticker, 30),
@@ -105,23 +142,15 @@ export async function GET(req: NextRequest) {
             marketCapUsd: details?.marketCapUsd ?? null,
             sparkline,
           } satisfies CryptoDetail;
-        })
-      ),
+        } catch { return null; }
+      }),
     ]);
 
-    const stocks: StockDetail[] = stockDetails
-      .filter((r) => r.status === "fulfilled")
-      .map((r) => (r as PromiseFulfilledResult<StockDetail>).value);
+    const filteredStocks = stocks.filter(Boolean) as StockDetail[];
+    const filteredEtfs = etfs.filter(Boolean) as EtfDetail[];
+    const filteredCryptos = cryptos.filter(Boolean) as CryptoDetail[];
 
-    const etfs: EtfDetail[] = etfDetails
-      .filter((r) => r.status === "fulfilled")
-      .map((r) => (r as PromiseFulfilledResult<EtfDetail>).value);
-
-    const cryptos: CryptoDetail[] = cryptoDetails
-      .filter((r) => r.status === "fulfilled")
-      .map((r) => (r as PromiseFulfilledResult<CryptoDetail>).value);
-
-    return NextResponse.json({ ok: true, stocks, etfs, cryptos });
+    return NextResponse.json({ ok: true, stocks: filteredStocks, etfs: filteredEtfs, cryptos: filteredCryptos });
   } catch (err) {
     console.error("[favorites/details API] Error:", err);
     return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });

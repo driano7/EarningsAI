@@ -40,13 +40,15 @@ export default function FinancePage() {
   const [categories, setCategories] = useState<CategoryTotal[]>([]);
   const [loading, setLoading] = useState(true);
   const [months, setMonths] = useState(6);
+  const [selectedMonth, setSelectedMonth] = useState("");
 
   useEffect(() => {
     const pw = localStorage.getItem("quartly_auth");
     const headers = { Authorization: `Bearer ${pw}` };
+    const mesQuery = selectedMonth ? `&mes=${selectedMonth}` : "";
 
     Promise.all([
-      fetch("/api/dashboard/finance", { headers }).then((r) => r.json()),
+      fetch(`/api/dashboard/finance?mes=${selectedMonth || "2026-05"}`, { headers }).then((r) => r.json()),
       fetch(`/api/dashboard/finance/chart?months=${months}`, { headers }).then((r) => r.json()),
     ])
       .then(([f, c]) => {
@@ -57,7 +59,7 @@ export default function FinancePage() {
         }
       })
       .finally(() => setLoading(false));
-  }, [months]);
+  }, [months, selectedMonth]);
 
   const monthlyData = useMemo(() => {
     const grouped: Record<string, { income: number; expense: number; invest: number }> = {};
@@ -118,7 +120,7 @@ export default function FinancePage() {
         ))}
       </Grid>
 
-      <Row gap="s">
+      <Row gap="m" vertical="center" wrap>
         {[3, 6, 12].map((m) => (
           <Card
             key={m}
@@ -131,6 +133,25 @@ export default function FinancePage() {
             <Text variant="body-default-s">{m} meses</Text>
           </Card>
         ))}
+        <div style={{ width: 1, height: 24, background: "var(--neutral-alpha-medium)" }} />
+        {["2026-05", "2026-04", "2026-03", "2026-02", "2026-01", "2025-12"].map((m) => (
+          <Card
+            key={m}
+            padding="xs"
+            radius="m"
+            className="glass-card"
+            style={{ cursor: "pointer", opacity: selectedMonth === m ? 1 : 0.4 }}
+            onClick={() => setSelectedMonth(m)}
+          >
+            <Text variant="body-default-xs">{m}</Text>
+          </Card>
+        ))}
+        {selectedMonth && (
+          <Card padding="xs" radius="m" className="glass-card" style={{ cursor: "pointer" }}
+            onClick={() => setSelectedMonth("")}>
+            <Text variant="body-default-xs">✕</Text>
+          </Card>
+        )}
       </Row>
 
       <Grid columns="1" gap="m">
