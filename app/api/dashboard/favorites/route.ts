@@ -42,10 +42,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: true, allUsers, data: allData, mode: "explore" });
     }
 
+    const uid = chatId!;
     const [stocks, etfs, cryptos] = await Promise.all([
-      getUserStocks(chatId).catch(() => [] as string[]),
-      getUserEtfs(chatId).catch(() => [] as string[]),
-      getUserCryptos(chatId).catch(() => [] as string[]),
+      getUserStocks(uid).catch(() => [] as string[]),
+      getUserEtfs(uid).catch(() => [] as string[]),
+      getUserCryptos(uid).catch(() => [] as string[]),
     ]);
 
     const stockData = stocks.map((ticker) => {
