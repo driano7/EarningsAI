@@ -12,11 +12,13 @@ export interface CryptoHistory {
   prices: Array<[number, number]>;
 }
 
+export type PositionType = "stock" | "etf" | "crypto" | "sofipo" | "cetes";
+
 export interface PortfolioPosition {
   id: string;
   chatId: string;
   ticker: string;
-  type: "stock" | "etf" | "crypto";
+  type: PositionType;
   buyPrice: number;
   quantity: number;
   buyDate: string;

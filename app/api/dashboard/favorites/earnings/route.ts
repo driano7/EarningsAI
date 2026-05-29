@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { kv } from "@vercel/kv";
-import { getUserStocks, getUserEtfs } from "@/lib/kv";
+import { getUserStocks, getUserEtfs, getUserCryptos, getCachedTickerData, setCachedTickerData } from "@/lib/kv";
+import type { CachedTickerEarnings } from "@/lib/kv";
 import { getEarningsHistory, getRecommendationTrends, getQuote } from "@/lib/finnhub";
 import type { EarningEvent, RecommendationTrend, QuoteData } from "@/lib/finnhub";
 import { getLogoUrl } from "@/lib/logo";
+import { getCryptoDetails } from "@/lib/coingecko";
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -21,6 +22,42 @@ interface EtfDetail {
   quote: QuoteData | null;
 }
 
+interface CryptoDetail {
+  ticker: string;
+  logo: string | null;
+  priceUsd: number | null;
+  change24h: number | null;
+  change7d: number | null;
+  marketCapUsd: number | null;
+}
+
+async function fetchStockDetail(ticker: string): Promise<StockDetail> {
+  const cached = await getCachedTickerData(ticker);
+  if (cached) {
+    return {
+      ticker,
+      logo: cached.logo,
+      earnings: cached.earnings as EarningEvent[],
+      analystSignals: cached.analystSignals as RecommendationTrend[],
+      quote: cached.quote as QuoteData | null,
+    };
+  }
+  const [earnings, signals, quote, logo] = await Promise.all([
+    getEarningsHistory(ticker),
+    getRecommendationTrends(ticker),
+    getQuote(ticker),
+    getLogoUrl(ticker, false),
+  ]);
+  const detail: StockDetail = { ticker, logo, earnings, analystSignals: signals, quote };
+  await setCachedTickerData(ticker, {
+    logo,
+    earnings: earnings as CachedTickerEarnings["earnings"],
+    analystSignals: signals as CachedTickerEarnings["analystSignals"],
+    quote: quote as CachedTickerEarnings["quote"],
+  });
+  return detail;
+}
+
 export async function GET(req: NextRequest) {
   const chatId = req.nextUrl.searchParams.get("chatId");
   if (!chatId) {
@@ -28,30 +65,14 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const cacheKey = `fav:detail:${chatId}`;
-    const cached = await kv.get<{ data: { stocks: StockDetail[]; etfs: EtfDetail[] }; cachedAt: number }>(cacheKey);
-
-    if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
-      return NextResponse.json({ ok: true, ...cached.data, cached: true, cachedAt: new Date(cached.cachedAt).toISOString() });
-    }
-
-    const [stockTickers, etfTickers] = await Promise.all([
+    const [stockTickers, etfTickers, cryptoTickers] = await Promise.all([
       getUserStocks(chatId).catch(() => [] as string[]),
       getUserEtfs(chatId).catch(() => [] as string[]),
+      getUserCryptos(chatId).catch(() => [] as string[]),
     ]);
 
-    const [stockDetails, etfDetails] = await Promise.all([
-      Promise.allSettled(
-        stockTickers.map(async (ticker) => {
-          const [earnings, signals, quote, logo] = await Promise.all([
-            getEarningsHistory(ticker),
-            getRecommendationTrends(ticker),
-            getQuote(ticker),
-            getLogoUrl(ticker, false),
-          ]);
-          return { ticker, logo, earnings, analystSignals: signals, quote } satisfies StockDetail;
-        })
-      ),
+    const [stockDetails, etfDetails, cryptoDetails] = await Promise.all([
+      Promise.allSettled(stockTickers.map(fetchStockDetail)),
       Promise.allSettled(
         etfTickers.map(async (ticker) => {
           const [quote, logo] = await Promise.all([
@@ -59,6 +80,19 @@ export async function GET(req: NextRequest) {
             getLogoUrl(ticker, true),
           ]);
           return { ticker, logo, quote } satisfies EtfDetail;
+        })
+      ),
+      Promise.allSettled(
+        cryptoTickers.map(async (ticker) => {
+          const details = await getCryptoDetails(ticker);
+          return {
+            ticker,
+            logo: details?.logo ?? null,
+            priceUsd: details?.priceUsd ?? null,
+            change24h: details?.change24h ?? null,
+            change7d: details?.change7d ?? null,
+            marketCapUsd: details?.marketCapUsd ?? null,
+          } satisfies CryptoDetail;
         })
       ),
     ]);
@@ -71,13 +105,13 @@ export async function GET(req: NextRequest) {
       .filter((r) => r.status === "fulfilled")
       .map((r) => (r as PromiseFulfilledResult<EtfDetail>).value);
 
-    const now = Date.now();
-    await kv.set(cacheKey, { data: { stocks, etfs }, cachedAt: now });
-    await kv.expire(cacheKey, 86400);
+    const cryptos: CryptoDetail[] = cryptoDetails
+      .filter((r) => r.status === "fulfilled")
+      .map((r) => (r as PromiseFulfilledResult<CryptoDetail>).value);
 
-    return NextResponse.json({ ok: true, stocks, etfs, cached: false, cachedAt: new Date(now).toISOString() });
+    return NextResponse.json({ ok: true, stocks, etfs, cryptos });
   } catch (err) {
-    console.error("[favorites/earnings API] Error:", err);
+    console.error("[favorites/details API] Error:", err);
     return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });
   }
 }

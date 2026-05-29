@@ -66,17 +66,19 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
 
   return (
     <Column gap="l">
-      <Flex vertical="center" horizontal="between" wrap gap="m">
-        <Flex gap="m" wrap vertical="center">
-          <Input
-            id="filter-ticker"
-            label="Ticker"
-            value={filterTicker}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilterTicker(e.target.value)}
-            placeholder="Filtrar..."
-            style={{ minWidth: 140 }}
-          />
-          <Flex vertical="end" gap="xs">
+      <Flex horizontal="between" wrap gap="m">
+        <Flex gap="m" wrap vertical="end">
+          <Column gap="xs">
+            <Text variant="body-default-xs" onBackground="neutral-weak">Ticker</Text>
+            <Input
+              id="filter-ticker"
+              value={filterTicker}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilterTicker(e.target.value)}
+              placeholder="Filtrar..."
+              style={{ minWidth: 140 }}
+            />
+          </Column>
+          <Column gap="xs">
             <Text variant="body-default-xs" onBackground="neutral-weak">Tipo</Text>
             <select
               value={filterType}
@@ -89,27 +91,33 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
                 color: "var(--neutral-on-background-strong)",
                 fontSize: 14,
                 outline: "none",
+                height: 36,
+                boxSizing: "border-box",
               }}
             >
               <option value="all">Todos</option>
               <option value="buy">Compra</option>
               <option value="sell">Venta</option>
             </select>
-          </Flex>
-          <Input
-            id="filter-date-from"
-            label="Desde"
-            type="date"
-            value={filterDateFrom}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilterDateFrom(e.target.value)}
-          />
-          <Input
-            id="filter-date-to"
-            label="Hasta"
-            type="date"
-            value={filterDateTo}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilterDateTo(e.target.value)}
-          />
+          </Column>
+          <Column gap="xs">
+            <Text variant="body-default-xs" onBackground="neutral-weak">Desde</Text>
+            <Input
+              id="filter-date-from"
+              type="date"
+              value={filterDateFrom}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilterDateFrom(e.target.value)}
+            />
+          </Column>
+          <Column gap="xs">
+            <Text variant="body-default-xs" onBackground="neutral-weak">Hasta</Text>
+            <Input
+              id="filter-date-to"
+              type="date"
+              value={filterDateTo}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilterDateTo(e.target.value)}
+            />
+          </Column>
         </Flex>
         <Button variant="secondary" onClick={exportCsv}>
           📥 Exportar CSV

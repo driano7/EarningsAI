@@ -108,6 +108,31 @@ export async function getCryptoHistory(ticker: string, days: 30 | 90 | 365 = 30)
   }
 }
 
+export async function getCryptoDetails(ticker: string): Promise<{ logo: string | null; priceUsd: number | null; change24h: number | null; change7d: number | null; marketCapUsd: number | null } | null> {
+  const id = CRYPTO_ID_MAP[ticker.toUpperCase()];
+  if (!id) return null;
+
+  try {
+    const url = `${COINGECKO_BASE}/coins/${id}?localization=false&tickers=false&community_data=false&developer_data=false&sparkline=false`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+
+    const data = (await res.json()) as Record<string, unknown>;
+    const image = data.image as Record<string, string> | undefined;
+    const marketData = data.market_data as Record<string, unknown> | undefined;
+
+    return {
+      logo: image?.large || image?.small || image?.thumb || null,
+      priceUsd: ((marketData?.current_price as Record<string, number>)?.usd) ?? null,
+      change24h: ((marketData?.price_change_percentage_24h as number)) ?? null,
+      change7d: ((marketData?.price_change_percentage_7d as number)) ?? null,
+      marketCapUsd: ((marketData?.market_cap as Record<string, number>)?.usd) ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function searchCrypto(query: string): Promise<Array<{ id: string; symbol: string; name: string }>> {
   if (!query.trim()) return [];
 

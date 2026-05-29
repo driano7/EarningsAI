@@ -75,7 +75,7 @@ export default function AddPositionModal({
 
     onSave({
       ticker: ticker.toUpperCase(),
-      type: type as "stock" | "etf" | "crypto",
+      type: type as "stock" | "etf" | "crypto" | "sofipo" | "cetes",
       buyPrice: Number(buyPrice),
       quantity: Number(quantity),
       buyDate,
@@ -143,14 +143,18 @@ export default function AddPositionModal({
                   <Flex gap="m">
                     <Input
                       id="pos-ticker"
-                      label="Ticker"
+                      label="Nombre / Ticker"
                       value={ticker}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTicker(e.target.value.toUpperCase())}
-                      placeholder="Ej: AAPL"
+                      placeholder={
+                        type === "sofipo" ? "Ej: FONDEO, KLAR" :
+                        type === "cetes" ? "Ej: CETES28, CETES91" :
+                        "Ej: AAPL"
+                      }
                       disabled={!!editPosition}
                       style={{ flex: 1 }}
                     />
-                    <Flex vertical="end" gap="xs" style={{ flex: 1 }}>
+                    <Column gap="xs" style={{ flex: 1 }}>
                       <Text variant="body-default-xs" onBackground="neutral-weak">Tipo</Text>
                       <select
                         value={type}
@@ -164,13 +168,17 @@ export default function AddPositionModal({
                           color: "var(--neutral-on-background-strong)",
                           fontSize: 14,
                           outline: "none",
+                          height: 36,
+                          boxSizing: "border-box",
                         }}
                       >
                         <option value="stock">Acción</option>
                         <option value="etf">ETF</option>
                         <option value="crypto">Cripto</option>
+                        <option value="sofipo">🏦 SOFIPO</option>
+                        <option value="cetes">📜 CETES</option>
                       </select>
-                    </Flex>
+                    </Column>
                   </Flex>
                   <Flex gap="m">
                     <Input

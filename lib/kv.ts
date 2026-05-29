@@ -203,3 +203,51 @@ export async function consumeLinkCode(code: string): Promise<string | null> {
   await kv.del(key);
   return data.email;
 }
+
+/* ─── Ticker earnings cache (shared: dashboard + Telegram bot) ─── */
+
+export interface CachedTickerEarnings {
+  logo: string | null;
+  earnings: Array<{
+    symbol: string;
+    actual: number | null;
+    estimate: number;
+    surprise: number | null;
+    surprisePercent: number | null;
+    year: number;
+    quarter: number;
+    period: string;
+  }>;
+  analystSignals: Array<{
+    buy: number;
+    hold: number;
+    sell: number;
+    strongBuy: number;
+    strongSell: number;
+    period: string;
+  }>;
+  quote: {
+    c: number; d: number; dp: number; h: number; l: number; o: number; pc: number; t: number;
+  } | null;
+  fetchedAt: number;
+}
+
+const TICKER_DATA_TTL = 86400;
+
+export async function getCachedTickerData(ticker: string): Promise<CachedTickerEarnings | null> {
+  const key = `ticker:data:${ticker.toUpperCase()}`;
+  const data = await kv.get<CachedTickerEarnings>(key);
+  if (!data) return null;
+  const age = Date.now() - data.fetchedAt;
+  if (age > TICKER_DATA_TTL * 1000) {
+    await kv.del(key);
+    return null;
+  }
+  return data;
+}
+
+export async function setCachedTickerData(ticker: string, data: Omit<CachedTickerEarnings, "fetchedAt">): Promise<void> {
+  const key = `ticker:data:${ticker.toUpperCase()}`;
+  await kv.set(key, { ...data, fetchedAt: Date.now() });
+  await kv.expire(key, TICKER_DATA_TTL);
+}

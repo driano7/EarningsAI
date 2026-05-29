@@ -49,6 +49,15 @@ interface EtfDetail {
   quote: QuoteData | null;
 }
 
+interface CryptoDetail {
+  ticker: string;
+  logo: string | null;
+  priceUsd: number | null;
+  change24h: number | null;
+  change7d: number | null;
+  marketCapUsd: number | null;
+}
+
 interface FavStock { ticker: string; name: string; sector: string; type: "stock"; }
 interface FavEtf { ticker: string; name: string; sector: string; type: "etf"; }
 interface FavCrypto { ticker: string; name: string; priceUsd: number | null; change24h: number | null; type: "crypto"; }
@@ -61,6 +70,7 @@ export default function FavoritesPage() {
   const [etfs, setEtfs] = useState<FavEtf[]>([]);
   const [stockDetails, setStockDetails] = useState<Map<string, StockDetail>>(new Map());
   const [etfDetails, setEtfDetails] = useState<Map<string, EtfDetail>>(new Map());
+  const [cryptoDetails, setCryptoDetails] = useState<Map<string, CryptoDetail>>(new Map());
   const [loading, setLoading] = useState(true);
   const [earningsLoading, setEarningsLoading] = useState(false);
   const [tab, setTab] = useState<TabType>("cryptos");
@@ -69,7 +79,6 @@ export default function FavoritesPage() {
   const [chatId, setChatId] = useState<string>("");
   const [knownUsers, setKnownUsers] = useState<string[]>([]);
   const [showUserPicker, setShowUserPicker] = useState(false);
-  const [cachedAt, setCachedAt] = useState<string | null>(null);
   const [logoErrors, setLogoErrors] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -122,7 +131,9 @@ export default function FavoritesPage() {
         const eMap = new Map<string, EtfDetail>();
         for (const e of data.etfs) eMap.set(e.ticker, e);
         setEtfDetails(eMap);
-        if (data.cachedAt) setCachedAt(data.cachedAt);
+        const cMap = new Map<string, CryptoDetail>();
+        for (const c of (data.cryptos || [])) cMap.set(c.ticker, c);
+        setCryptoDetails(cMap);
       }
     } catch { /* ignore */ }
     setEarningsLoading(false);
@@ -233,12 +244,11 @@ export default function FavoritesPage() {
         <Column gap="s">
           <Heading variant="heading-strong-xl">Mis Favoritos</Heading>
           <Text variant="body-default-s" onBackground="neutral-weak">
-            Chat ID: {chatId || "No configurado"}
-            {cachedAt && ` · Actualizado ${new Date(cachedAt).toLocaleDateString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`}
+            Chat ID: {chatId || "No configurado"} · Datos cacheados en KV (24h)
           </Text>
         </Column>
         <Row gap="s" wrap>
-          <Button size="s" variant="tertiary" onClick={() => { setStockDetails(new Map()); setEtfDetails(new Map()); fetchEarnings(); }}>
+          <Button size="s" variant="tertiary" onClick={() => { setStockDetails(new Map()); setEtfDetails(new Map()); setCryptoDetails(new Map()); fetchEarnings(); }}>
             Recargar datos
           </Button>
           <Button size="s" variant="tertiary" onClick={() => {
@@ -301,21 +311,37 @@ export default function FavoritesPage() {
           {activeItems.map((item) => {
             if (item.type === "crypto") {
               const c = item as FavCrypto;
+              const detail = cryptoDetails.get(c.ticker);
               return (
                 <Card key={c.ticker} padding="m" radius="m" fillWidth>
                   <Row vertical="center" horizontal="between">
                     <Row gap="s" vertical="center">
-                      <Badge textVariant="label-default-s" color="brand">{c.ticker}</Badge>
+                      {detail?.logo && !logoErrors.has(c.ticker) && (
+                        <img
+                          src={detail.logo}
+                          alt={c.ticker}
+                          style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "contain" }}
+                          onError={() => setLogoErrors((prev) => new Set(prev).add(c.ticker))}
+                        />
+                      )}
                       <Column gap="xs">
+                        <Row gap="s" vertical="center">
+                          <Badge textVariant="label-default-s" color="brand">{c.ticker}</Badge>
+                        </Row>
                         <Text variant="body-default-s">{c.name}</Text>
                         <Text variant="heading-strong-m">
-                          {c.priceUsd !== null
-                            ? `$${c.priceUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          {detail?.priceUsd ?? c.priceUsd !== null
+                            ? `$${(detail?.priceUsd ?? c.priceUsd)!.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                             : "—"}
                         </Text>
-                        <Text variant="label-strong-s" onBackground={c.change24h !== null ? (c.change24h >= 0 ? "success-medium" : "danger-medium") : "neutral-weak"}>
-                          {c.change24h !== null ? formatPercent(c.change24h) : "—"}
+                        <Text variant="label-strong-s" onBackground={(detail?.change24h ?? c.change24h) !== null ? ((detail?.change24h ?? c.change24h)! >= 0 ? "success-medium" : "danger-medium") : "neutral-weak"}>
+                          {(detail?.change24h ?? c.change24h) !== null ? formatPercent(detail?.change24h ?? c.change24h!) : "—"}
                         </Text>
+                        {detail?.marketCapUsd != null && (
+                          <Text variant="label-default-xs" onBackground="neutral-weak">
+                            Cap: ${(detail.marketCapUsd / 1e9).toFixed(2)}B
+                          </Text>
+                        )}
                       </Column>
                     </Row>
                     <IconButton icon="trash" size="s" variant="danger" onClick={() => handleRemove(c.ticker, "crypto")} tooltip="Eliminar" />

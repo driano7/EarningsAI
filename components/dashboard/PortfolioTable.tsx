@@ -1,9 +1,3 @@
-/*
- * Quartly Bot — components/dashboard/PortfolioTable.tsx
- * Copyright (c) Donovan Riaño. All rights reserved.
- * Use of this code requires prior authorization from the owner.
- */
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -18,11 +12,25 @@ interface PortfolioTableProps {
   onRefresh: () => void;
 }
 
+type PositionType = "stock" | "etf" | "crypto" | "sofipo" | "cetes";
+
 interface PositionWithPrice extends PortfolioPosition {
   currentPrice: number | null;
   change1d: number | null;
   pnl: number | null;
   pnlPercent: number | null;
+}
+
+const TYPE_LABELS: Record<PositionType, string> = {
+  stock: "Acción",
+  etf: "ETF",
+  crypto: "Cripto",
+  sofipo: "🏦 SOFIPO",
+  cetes: "📜 CETES",
+};
+
+function isSavingsType(type: PositionType): boolean {
+  return type === "sofipo" || type === "cetes";
 }
 
 export default function PortfolioTable({ positions, onEdit, onDelete, onSell, onRefresh }: PortfolioTableProps) {
@@ -38,17 +46,26 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
       for (const pos of positions) {
         let currentPrice: number | null = null;
         let change1d: number | null = null;
-        try {
-          const res = await fetch(`/api/finance/price?ticker=${pos.ticker}`);
-          const json = await res.json();
-          if (json.ok) {
-            currentPrice = json.data.current;
-            change1d = json.data.change1d;
-          }
-        } catch { /* ignore */ }
 
-        const pnl = currentPrice !== null ? (currentPrice - pos.buyPrice) * pos.quantity : null;
-        const pnlPercent = currentPrice !== null ? ((currentPrice - pos.buyPrice) / pos.buyPrice) * 100 : null;
+        if (isSavingsType(pos.type)) {
+          currentPrice = pos.buyPrice;
+        } else {
+          try {
+            const res = await fetch(`/api/finance/price?ticker=${pos.ticker}`);
+            const json = await res.json();
+            if (json.ok) {
+              currentPrice = json.data.current;
+              change1d = json.data.change1d;
+            }
+          } catch { /* ignore */ }
+        }
+
+        const pnl = currentPrice !== null && !isSavingsType(pos.type)
+          ? (currentPrice - pos.buyPrice) * pos.quantity
+          : null;
+        const pnlPercent = currentPrice !== null && !isSavingsType(pos.type)
+          ? ((currentPrice - pos.buyPrice) / pos.buyPrice) * 100
+          : null;
 
         enriched.push({ ...pos, currentPrice, change1d, pnl, pnlPercent });
       }
@@ -130,7 +147,7 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
         }}
       >
         <Column gap="xs">
-          <Text variant="body-default-s" onBackground="neutral-weak">Valor total del portfolio</Text>
+          <Text variant="body-default-s" onBackground="neutral-weak">Valor total del portafolio</Text>
           <Text variant="display-strong-xs">${totalValue.toFixed(2)}</Text>
         </Column>
         <Column gap="xs" horizontal="center">
@@ -144,13 +161,13 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
       <Flex gap="m" vertical="center" wrap>
         <Input
           id="search-ticker"
-          label="Buscar ticker"
+          label="Buscar"
           value={search}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
           placeholder="Filtrar por ticker..."
           style={{ minWidth: 200 }}
         />
-        <Flex vertical="end" gap="xs">
+        <Column gap="xs">
           <Text variant="body-default-xs" onBackground="neutral-weak">Tipo</Text>
           <select
             value={filterType}
@@ -169,8 +186,10 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
             <option value="stock">Acciones</option>
             <option value="etf">ETFs</option>
             <option value="crypto">Cripto</option>
+            <option value="sofipo">🏦 SOFIPO</option>
+            <option value="cetes">📜 CETES</option>
           </select>
-        </Flex>
+        </Column>
       </Flex>
 
       <Flex
@@ -184,12 +203,12 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 800 }}>
           <thead>
             <tr style={{ borderBottom: "1px solid var(--neutral-alpha-weak)" }}>
-              <Th onClick={() => toggleSort("ticker")}>Ticker{sortIndicator("ticker")}</Th>
+              <Th onClick={() => toggleSort("ticker")}>Nombre{sortIndicator("ticker")}</Th>
               <Th>Tipo</Th>
-              <Th>Precio compra</Th>
+              <Th>Monto</Th>
               <Th>Cantidad</Th>
-              <Th onClick={() => toggleSort("currentPrice")}>Precio actual{sortIndicator("currentPrice")}</Th>
-              <Th onClick={() => toggleSort("pnlPercent")}>P&L{sortIndicator("pnlPercent")}</Th>
+              <Th onClick={() => toggleSort("currentPrice")}>Valor actual{sortIndicator("currentPrice")}</Th>
+              <Th onClick={() => toggleSort("pnlPercent")}>Rendimiento{sortIndicator("pnlPercent")}</Th>
               <Th>Acciones</Th>
             </tr>
           </thead>
@@ -204,6 +223,7 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
               </tr>
             ) : (
               filtered.map((pos) => {
+                const savings = isSavingsType(pos.type);
                 const pnlColor = pos.pnl === null
                   ? "var(--neutral-on-background-weak)"
                   : pos.pnl >= 0
@@ -219,7 +239,7 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
                     </td>
                     <td style={{ padding: "12px 16px" }}>
                       <Text variant="body-default-s" onBackground="neutral-weak">
-                        {pos.type === "stock" ? "Acción" : pos.type === "etf" ? "ETF" : "Cripto"}
+                        {TYPE_LABELS[pos.type as PositionType] || pos.type}
                       </Text>
                     </td>
                     <td style={{ padding: "12px 16px" }}>
@@ -234,27 +254,33 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
                       </Text>
                     </td>
                     <td style={{ padding: "12px 16px" }}>
-                      <Column gap="xs">
-                        <Text variant="body-default-m" style={{ color: pnlColor, fontWeight: 600 }}>
-                          {pos.pnl !== null
-                            ? `${pos.pnl >= 0 ? "+" : ""}$${pos.pnl.toFixed(2)}`
-                            : "—"}
-                        </Text>
-                        {pos.pnlPercent !== null && (
-                          <Text variant="body-default-xs" style={{ color: pnlColor }}>
-                            ({pos.pnlPercent >= 0 ? "+" : ""}{pos.pnlPercent.toFixed(2)}%)
+                      {savings ? (
+                        <Text variant="body-default-s" onBackground="neutral-weak">—</Text>
+                      ) : (
+                        <Column gap="xs">
+                          <Text variant="body-default-m" style={{ color: pnlColor, fontWeight: 600 }}>
+                            {pos.pnl !== null
+                              ? `${pos.pnl >= 0 ? "+" : ""}$${pos.pnl.toFixed(2)}`
+                              : "—"}
                           </Text>
-                        )}
-                      </Column>
+                          {pos.pnlPercent !== null && (
+                            <Text variant="body-default-xs" style={{ color: pnlColor }}>
+                              ({pos.pnlPercent >= 0 ? "+" : ""}{pos.pnlPercent.toFixed(2)}%)
+                            </Text>
+                          )}
+                        </Column>
+                      )}
                     </td>
                     <td style={{ padding: "12px 16px" }}>
                       <Flex gap="s" vertical="center">
                         <Button size="s" variant="secondary" onClick={() => onEdit(pos)}>
                           Editar
                         </Button>
-                        <Button size="s" variant="secondary" onClick={() => onSell(pos)}>
-                          Vender
-                        </Button>
+                        {!savings && (
+                          <Button size="s" variant="secondary" onClick={() => onSell(pos)}>
+                            Vender
+                          </Button>
+                        )}
                         <IconButton
                           icon="trash"
                           size="s"
