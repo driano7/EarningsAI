@@ -89,7 +89,7 @@ export default function Header() {
       >
         {/* ── LEFT: Logo ────────────────────── */}
         <Row gap="12" vertical="center">
-          <Icon name="presentationChartLine" size="l" />
+          <Heading variant="label-strong-l">⚡️📈</Heading>
           <Heading variant="label-strong-m">Quartly</Heading>
         </Row>
 

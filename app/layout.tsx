@@ -42,8 +42,10 @@ export default function RootLayout({
             "viz-style": dataStyle.variant,
           }}
         />
-        <title>Quartly Dashboard</title>
+        <title>⚡️📈 Quartly Dashboard</title>
         <meta name="description" content="Quartly Bot - Dashboard de monitoreo" />
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡️📈</text></svg>" />
+        <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡️📈</text></svg>" />
       </head>
       <Providers>
         <Flex as="body" fillWidth margin="0" padding="0" background="page">

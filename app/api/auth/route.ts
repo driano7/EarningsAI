@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getChatIdByEmail, generateLinkCode } from "@/lib/kv";
+import { getChatIdByEmail, generateLinkCode, getAllUsers } from "@/lib/kv";
 
 const VALID_EMAIL = "donovanriano@gmail.com";
 const VALID_PASSWORD = process.env.DASHBOARD_PASSWORD || "Donovan";
@@ -20,16 +20,18 @@ export async function POST(req: NextRequest) {
   }
 
   const chatId = await getChatIdByEmail(email);
-
   if (chatId) {
     return NextResponse.json({ ok: true, email: VALID_EMAIL, chatId });
   }
 
+  const registeredUsers = await getAllUsers();
   const code = await generateLinkCode(email);
+
   return NextResponse.json({
     ok: true,
     email: VALID_EMAIL,
     needsLink: true,
     linkCode: code,
+    registeredUsers,
   });
 }

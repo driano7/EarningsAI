@@ -75,7 +75,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           />
           {sidebarOpen && (
               <Flex fillWidth horizontal="between" vertical="center">
-              <Text variant="heading-default-m" marginLeft="s">Quartly</Text>
+              <Text variant="heading-default-m" marginLeft="s">⚡️📈 Quartly</Text>
               <IconButton
                 icon="logout"
                 onClick={handleLogout}
