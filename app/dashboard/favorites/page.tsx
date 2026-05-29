@@ -4,28 +4,9 @@ import { useEffect, useState, useCallback } from "react";
 import { Column, Row, Heading, Text, Badge, Card, Button, Input, IconButton, Grid } from "@once-ui-system/core";
 import { formatPercent } from "@/lib/formatFinance";
 
-interface FavStock {
-  ticker: string;
-  name: string;
-  sector: string;
-  type: "stock";
-}
-
-interface FavEtf {
-  ticker: string;
-  name: string;
-  sector: string;
-  type: "etf";
-}
-
-interface FavCrypto {
-  ticker: string;
-  name: string;
-  priceUsd: number | null;
-  change24h: number | null;
-  type: "crypto";
-}
-
+interface FavStock { ticker: string; name: string; sector: string; type: "stock"; }
+interface FavEtf { ticker: string; name: string; sector: string; type: "etf"; }
+interface FavCrypto { ticker: string; name: string; priceUsd: number | null; change24h: number | null; type: "crypto"; }
 type FavItem = FavStock | FavEtf | FavCrypto;
 type TabType = "cryptos" | "stocks" | "etfs";
 
@@ -34,40 +15,57 @@ export default function FavoritesPage() {
   const [stocks, setStocks] = useState<FavStock[]>([]);
   const [etfs, setEtfs] = useState<FavEtf[]>([]);
   const [loading, setLoading] = useState(true);
-  const [debugInfo, setDebugInfo] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [exploreData, setExploreData] = useState<string | null>(null);
   const [tab, setTab] = useState<TabType>("cryptos");
   const [addTicker, setAddTicker] = useState("");
-  const [addType, setAddType] = useState<TabType>("cryptos");
   const [adding, setAdding] = useState(false);
+  const [chatId, setChatId] = useState<string>("");
+  const [knownUsers, setKnownUsers] = useState<string[]>([]);
+  const [showUserPicker, setShowUserPicker] = useState(false);
 
-  const chatId = typeof window !== "undefined"
-    ? localStorage.getItem("quartly_chatId") || "default"
-    : "default";
+  useEffect(() => {
+    const stored = localStorage.getItem("quartly_chatId") || "";
+    setChatId(stored);
+    fetch("/api/auth/users").then((r) => r.json()).then((data) => {
+      if (data.ok && data.users.length > 0) {
+        setKnownUsers(data.users);
+        if (stored && !data.users.includes(stored)) {
+          setShowUserPicker(true);
+        } else if (!stored) {
+          setShowUserPicker(true);
+        }
+      }
+    }).catch(() => {});
+  }, []);
 
   const fetchFavorites = useCallback(async () => {
+    if (!chatId) return;
     setLoading(true);
-    setErrorMsg(null);
-    setDebugInfo(null);
     try {
       const res = await fetch(`/api/dashboard/favorites?chatId=${chatId}`);
       const data = await res.json();
-      setDebugInfo(JSON.stringify(data.debug || data, null, 2));
       if (data.ok) {
         setStocks(data.stocks || []);
         setEtfs(data.etfs || []);
         setCryptos(data.cryptos || []);
-      } else {
-        setErrorMsg(data.error || "Error desconocido");
+        if (data.stocks.length === 0 && data.etfs.length === 0 && data.cryptos.length === 0) {
+          const users = data.debug?.allUsers || knownUsers;
+          if (users.length > 0) {
+            setKnownUsers(users);
+            setShowUserPicker(true);
+          }
+        }
       }
-    } catch (e) {
-      setErrorMsg(String(e));
-    }
+    } catch { /* ignore */ }
     setLoading(false);
   }, [chatId]);
 
   useEffect(() => { fetchFavorites(); }, [fetchFavorites]);
+
+  function selectChatId(id: string) {
+    localStorage.setItem("quartly_chatId", id);
+    setChatId(id);
+    setShowUserPicker(false);
+  }
 
   async function handleAdd() {
     if (!addTicker.trim()) return;
@@ -76,7 +74,7 @@ export default function FavoritesPage() {
       await fetch("/api/dashboard/favorites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chatId, ticker: addTicker.toUpperCase(), type: addType === "cryptos" ? "crypto" : addType === "etfs" ? "etf" : "stock" }),
+        body: JSON.stringify({ chatId, ticker: addTicker.toUpperCase(), type: tab === "cryptos" ? "crypto" : tab === "etfs" ? "etf" : "stock" }),
       });
       setAddTicker("");
       fetchFavorites();
@@ -97,14 +95,63 @@ export default function FavoritesPage() {
 
   const activeItems: FavItem[] = tab === "cryptos" ? cryptos : tab === "stocks" ? stocks : etfs;
 
+  if (showUserPicker) {
+    return (
+      <Column fillWidth minHeight="100vh" horizontal="center" vertical="center" padding="l">
+        <Column maxWidth="xs" gap="l" padding="xl" radius="m"
+          style={{
+            background: "var(--neutral-alpha-weak)",
+            backdropFilter: "blur(12px)",
+            border: "1px solid var(--neutral-alpha-medium)",
+          }}
+        >
+          <Column gap="s" horizontal="center">
+            <Heading variant="display-strong-xs">Selecciona tu cuenta</Heading>
+            <Text variant="body-default-m" onBackground="neutral-weak">
+              Elige tu cuenta de KV para cargar tus favoritos:
+            </Text>
+          </Column>
+          <Column gap="s">
+            {knownUsers.map((uid) => (
+              <Card key={uid} padding="m" radius="m" fillWidth
+                style={{ cursor: "pointer" }}
+                onClick={() => selectChatId(uid)}
+              >
+                <Row vertical="center" gap="s">
+                  <Text variant="body-default-l">🤖</Text>
+                  <Column gap="xs">
+                    <Text variant="label-strong-s">Chat ID: {uid}</Text>
+                    <Text variant="label-default-xs" onBackground="neutral-weak">Haz clic para usar esta cuenta</Text>
+                  </Column>
+                </Row>
+              </Card>
+            ))}
+          </Column>
+        </Column>
+      </Column>
+    );
+  }
+
   return (
     <Column gap="l">
-      <Column gap="s">
-        <Heading variant="heading-strong-xl">Mis Favoritos</Heading>
-        <Text variant="body-default-l" onBackground="neutral-weak">
-          Cryptos, acciones y ETFs en tu watchlist personal
-        </Text>
-      </Column>
+      <Row vertical="center" horizontal="between" wrap gap="s">
+        <Column gap="s">
+          <Heading variant="heading-strong-xl">Mis Favoritos</Heading>
+          <Text variant="body-default-s" onBackground="neutral-weak">
+            Chat ID: {chatId || "No configurado"}
+          </Text>
+        </Column>
+        <Button size="s" variant="tertiary" onClick={() => {
+          localStorage.removeItem("quartly_chatId");
+          setChatId("");
+          setShowUserPicker(true);
+          fetch("/api/auth/users").then((r) => r.json()).then((d) => {
+            if (d.ok) setKnownUsers(d.users);
+          }).catch(() => {});
+        }}>
+          Cambiar cuenta
+        </Button>
+      </Row>
 
       <Row gap="s" wrap>
         {(["cryptos", "stocks", "etfs"] as TabType[]).map((t) => (
@@ -124,9 +171,10 @@ export default function FavoritesPage() {
         <Input
           id="add-ticker"
           label="Agregar ticker"
-          placeholder={tab === "cryptos" ? "Ej: BTC" : "Ej: AAPL"}
+          placeholder={tab === "cryptos" ? "Ej: BTC, ETH, SOL" : "Ej: AAPL, MSFT"}
           value={addTicker}
           onChange={(e) => setAddTicker(e.target.value)}
+          onKeyDown={(e: React.KeyboardEvent) => { if (e.key === "Enter") handleAdd(); }}
           style={{ minWidth: 200, flex: 1 }}
         />
         <Button onClick={handleAdd} disabled={!addTicker.trim() || adding}>
@@ -143,7 +191,7 @@ export default function FavoritesPage() {
               No tienes {tab === "cryptos" ? "cryptos" : tab === "stocks" ? "acciones" : "ETFs"} en tu watchlist.
             </Text>
             <Text variant="body-default-s" onBackground="neutral-weak">
-              Agrega usando el campo de arriba.
+              Agrega usando el campo de arriba o desde Telegram con @earningsinfoaibot.
             </Text>
           </Column>
         </Card>
@@ -167,13 +215,7 @@ export default function FavoritesPage() {
                         </Text>
                       </Column>
                     </Row>
-                    <IconButton
-                      icon="trash"
-                      size="s"
-                      variant="danger"
-                      onClick={() => handleRemove(c.ticker, "crypto")}
-                      tooltip="Eliminar"
-                    />
+                    <IconButton icon="trash" size="s" variant="danger" onClick={() => handleRemove(c.ticker, "crypto")} tooltip="Eliminar" />
                   </Row>
                 </Card>
               );
@@ -189,13 +231,7 @@ export default function FavoritesPage() {
                       <Text variant="label-default-xs" onBackground="neutral-weak">{s.sector || "—"}</Text>
                     </Column>
                   </Row>
-                  <IconButton
-                    icon="trash"
-                    size="s"
-                    variant="danger"
-                    onClick={() => handleRemove(s.ticker, s.type)}
-                    tooltip="Eliminar"
-                  />
+                  <IconButton icon="trash" size="s" variant="danger" onClick={() => handleRemove(s.ticker, s.type)} tooltip="Eliminar" />
                 </Row>
               </Card>
             );
@@ -203,50 +239,9 @@ export default function FavoritesPage() {
         </Grid>
       )}
 
-      <Card padding="m" radius="m" fillWidth>
-        <Column gap="s">
-          <Text variant="label-default-xs" onBackground="neutral-weak">
-            Chat ID usado: <strong>{chatId}</strong>
-          </Text>
-          {errorMsg && (
-            <Text variant="label-default-xs" onBackground="danger-weak">
-              Error: {errorMsg}
-            </Text>
-          )}
-          {debugInfo && (
-            <details>
-              <summary style={{ cursor: "pointer", fontSize: 12, color: "var(--neutral-on-background-weak)" }}>Debug: Respuesta del API</summary>
-              <pre style={{ fontSize: 11, overflow: "auto", maxHeight: 200, marginTop: 8, padding: 8, background: "var(--neutral-alpha-weak)", borderRadius: 8 }}>
-                {debugInfo}
-              </pre>
-            </details>
-          )}
-          <Row gap="s" vertical="center">
-            <Button size="s" variant="tertiary" onClick={async () => {
-              try {
-                const res = await fetch("/api/dashboard/favorites?all=true");
-                const data = await res.json();
-                setExploreData(JSON.stringify(data, null, 2));
-              } catch { setExploreData("Error al explorar KV"); }
-            }}>
-              Explorar KV (todos los usuarios)
-            </Button>
-            {exploreData && (
-              <Button size="s" variant="tertiary" onClick={() => setExploreData(null)}>
-                Cerrar
-              </Button>
-            )}
-          </Row>
-          {exploreData && (
-            <pre style={{ fontSize: 11, overflow: "auto", maxHeight: 300, padding: 8, background: "var(--neutral-alpha-weak)", borderRadius: 8 }}>
-              {exploreData}
-            </pre>
-          )}
-          <Text variant="label-default-xs" onBackground="neutral-weak">
-            🔄 Datos sincronizados con KV — los cambios se reflejan en Telegram y viceversa.
-          </Text>
-        </Column>
-      </Card>
+      <Text variant="label-default-xs" onBackground="neutral-weak">
+        🔄 Datos sincronizados con KV — los cambios se reflejan en Telegram y viceversa.
+      </Text>
     </Column>
   );
 }
