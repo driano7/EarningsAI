@@ -5,6 +5,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { env } from "../lib/env";
 import { getAllUsers, getUserWatchlist, hasReminded, markReminded } from "../lib/kv";
 import { getEarningsCalendar, getQuote, getRecommendationTrends, formatAnalystSignal } from "../lib/finnhub";
 import { getLogoUrl } from "../lib/logo";
@@ -13,7 +14,10 @@ import { formatPriceBlock, PriceData } from "../lib/price";
 import { SP500 } from "../lib/sp500";
 import { ETFS } from "../lib/etfs";
 
-export default async function handler(_req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.headers["x-cron-secret"] !== env.CRON_SECRET) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
   const users = await getAllUsers();
   if (users.length === 0) {
     return res.status(200).json({ ok: true, message: "No users" });

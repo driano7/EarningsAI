@@ -9,6 +9,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { env } from "../lib/env";
 import { getAllUsers, getUserWatchlist } from "../lib/kv";
 import { getEarningsCalendar } from "../lib/finnhub";
 import { buildTickerCard } from "../lib/build-ticker-card";
@@ -19,7 +20,7 @@ import { ETFS } from "../lib/etfs";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
+const OPENROUTER_API_KEY = env.OPENROUTER_API_KEY;
 
 async function finnhubRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
   const maxAttempts = 3;
@@ -49,7 +50,10 @@ function resolveName(ticker: string): string {
   return ticker;
 }
 
-export default async function handler(_req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.headers["x-cron-secret"] !== env.CRON_SECRET) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
   const users = await getAllUsers();
   if (users.length === 0) {
     return res.status(200).json({ ok: true, message: "No hay usuarios registrados" });

@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Column, Row, Heading, Text, Badge, Card, IconButton, Grid } from "@once-ui-system/core";
 import { returns, annualizedVolatility, maxDrawdown, sharpeRatio } from "@/lib/gs-quant";
 import { formatPercent } from "@/lib/formatFinance";
+import { getChartLineColor, CHART_COLORS } from "@/lib/chartColors";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { ChartCard } from "@/components/charts/ChartCard";
 import { exportCsvDownload, exportXlsxDownload } from "@/lib/chart-utils";
@@ -171,7 +172,18 @@ export default function WatchlistPage() {
                   <Tooltip
                     contentStyle={{ background: "var(--neutral-alpha-weak)", border: "1px solid var(--neutral-alpha-medium)", borderRadius: 8 }}
                   />
-                  <Line type="monotone" dataKey="close" stroke="var(--brand-on-background-strong)" dot={false} strokeWidth={2} />
+                  <Line
+                    type="monotone"
+                    dataKey="close"
+                    stroke={getChartLineColor(
+                      priceHistory.length >= 2
+                        ? priceHistory[priceHistory.length - 1].close - priceHistory[0].close
+                        : null
+                    )}
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 4, fill: "var(--cyan-400)" }}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             ) : (

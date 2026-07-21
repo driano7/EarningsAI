@@ -36,7 +36,7 @@ export async function addStock(chatId: string, ticker: string): Promise<{ ok: bo
   if (stocks.length + etfs.length >= WATCHLIST_LIMIT) {
     return {
       ok: false,
-      error: `❌ Alcanzaste el límite de 30 activos en tu watchlist.\nElimina uno con /mystocks o /myetfs antes de agregar otro.`,
+      error: `❌ Alcanzaste el límite de ${WATCHLIST_LIMIT} activos en tu watchlist.\nElimina uno con /mystocks o /myetfs antes de agregar otro.`,
     };
   }
 
@@ -56,7 +56,7 @@ export async function addEtf(chatId: string, ticker: string): Promise<{ ok: bool
   if (stocks.length + etfs.length >= WATCHLIST_LIMIT) {
     return {
       ok: false,
-      error: `❌ Alcanzaste el límite de 30 activos en tu watchlist.\nElimina uno con /mystocks o /myetfs antes de agregar otro.`,
+      error: `❌ Alcanzaste el límite de ${WATCHLIST_LIMIT} activos en tu watchlist.\nElimina uno con /mystocks o /myetfs antes de agregar otro.`,
     };
   }
 
@@ -92,7 +92,7 @@ export async function addCrypto(chatId: string, ticker: string): Promise<{ ok: b
   if (stocks.length + etfs.length + cryptos.length >= WATCHLIST_LIMIT) {
     return {
       ok: false,
-      error: `❌ Alcanzaste el límite de 30 activos en tu watchlist.\nElimina uno con /mystocks, /myetfs o /mycryptos antes de agregar otro.`,
+      error: `❌ Alcanzaste el límite de ${WATCHLIST_LIMIT} activos en tu watchlist.\nElimina uno con /mystocks, /myetfs o /mycryptos antes de agregar otro.`,
     };
   }
 

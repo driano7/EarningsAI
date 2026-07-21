@@ -7,16 +7,10 @@ import {
 } from "recharts";
 import { ChartCard } from "@/components/charts/ChartCard";
 import { ChartCarousel } from "@/components/charts/ChartCarousel";
+import { MacroStrip } from "@/components/dashboard/MacroStrip";
 import { useFinanceData } from "@/hooks/useFinanceData";
 import { formatCurrency, formatPercent, getChangeColor } from "@/lib/formatFinance";
-
-const CHART_COLORS = [
-  "var(--chart-positive)",
-  "var(--chart-negative)",
-  "var(--chart-neutral)",
-  "var(--brand-background-strong)",
-  "var(--accent-background-strong)",
-];
+import { CATEGORY_PALETTE, CHART_COLORS } from "@/lib/chartColors";
 
 export default function DashboardPage() {
   const { data, loading, error, refetch } = useFinanceData();
@@ -179,6 +173,9 @@ export default function DashboardPage() {
         </Card>
       </RevealFx>
 
+      {/* ── MACRO STRIP ─────────────────────────────────────── */}
+      <MacroStrip />
+
       {/* ── GRÁFICAS ── CAROUSEL ──────────────────────────── */}
       <ChartCarousel
         views={[
@@ -200,7 +197,7 @@ export default function DashboardPage() {
                           paddingAngle={2}
                         >
                           {data.portfolioAllocation.map((_, i) => (
-                            <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                            <Cell key={`cell-${i}`} fill={CATEGORY_PALETTE[i % CATEGORY_PALETTE.length]} />
                           ))}
                         </Pie>
                         <Tooltip
@@ -232,7 +229,7 @@ export default function DashboardPage() {
                                   <Row key={item.ticker} gap="xs" vertical="center" fillWidth>
                                     <div style={{
                                       width: 8, height: 8, borderRadius: 2,
-                                      background: CHART_COLORS[idx % CHART_COLORS.length],
+                                      background: CATEGORY_PALETTE[idx % CATEGORY_PALETTE.length],
                                       flexShrink: 0,
                                     }} />
                                     <Text variant="body-default-s" style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.ticker}</Text>
@@ -268,8 +265,8 @@ export default function DashboardPage() {
                         borderRadius: 8,
                       }}
                     />
-                    <Bar dataKey="income" fill="var(--chart-positive)" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="expense" fill="var(--chart-negative)" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="income" fill={CHART_COLORS.positive} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="expense" fill={CHART_COLORS.negative} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </ChartCard>

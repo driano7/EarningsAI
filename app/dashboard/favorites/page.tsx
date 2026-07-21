@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Column, Row, Heading, Text, Badge, Card, Button, Input, IconButton, Grid } from "@once-ui-system/core";
 import { formatPercent } from "@/lib/formatFinance";
+import { getChartLineColor } from "@/lib/chartColors";
 
 function Sparkline({ data, color, width = 120, height = 28 }: { data: number[]; color?: string; width?: number; height?: number }) {
   if (!data || data.length < 2) return null;

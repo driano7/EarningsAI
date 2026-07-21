@@ -7,6 +7,7 @@ import {
 } from "recharts";
 import { ChartCard } from "@/components/charts/ChartCard";
 import { exportCsvDownload, exportXlsxDownload } from "@/lib/chart-utils";
+import { CHART_COLORS, CATEGORY_PALETTE } from "@/lib/chartColors";
 
 interface FinanceData {
   totalIngresos: number;
@@ -28,11 +29,6 @@ interface CategoryTotal {
   name: string;
   total: number;
 }
-
-const CATEGORY_COLORS = [
-  "#7e22ce", "#c084fc", "#3b82f6", "#60a5fa", "#10b981", "#34d399",
-  "#f59e0b", "#fbbf24", "#ef4444", "#f87171", "#ec4899", "#f472b6",
-];
 
 export default function FinancePage() {
   const [data, setData] = useState<FinanceData | null>(null);
@@ -165,9 +161,9 @@ export default function FinancePage() {
                 contentStyle={{ background: "var(--neutral-alpha-weak)", border: "1px solid var(--neutral-alpha-medium)", borderRadius: 8 }}
               />
               <Legend />
-              <Bar dataKey="income" fill="var(--brand-on-background-strong)" name="Ingresos" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="expense" fill="var(--accent-on-background-strong)" name="Gastos" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="invest" fill="#c084fc" name="Inversiones" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="income" fill={CHART_COLORS.positive} name="Ingresos" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="expense" fill={CHART_COLORS.negative} name="Gastos" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="invest" fill={CHART_COLORS.neutral} name="Inversiones" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -187,7 +183,7 @@ export default function FinancePage() {
                 paddingAngle={2}
               >
                 {(categories.length > 0 ? categories : [{ name: "Sin datos", total: 1 }]).map((_, i) => (
-                  <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
+                  <Cell key={`cat-${i}`} fill={CATEGORY_PALETTE[i % CATEGORY_PALETTE.length]} />
                 ))}
               </Pie>
               <Tooltip

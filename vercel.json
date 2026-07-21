@@ -1,9 +1,16 @@
 {
   "framework": "nextjs",
   "crons": [
-    { "path": "/api/cron-morning",   "schedule": "0 12 * * 1-5" },
-    { "path": "/api/cron-afternoon", "schedule": "0 20 * * 1-5" },
-    { "path": "/api/cron-evening",   "schedule": "30 22 * * 1-5" },
-    { "path": "/api/cron-weekly",    "schedule": "0 1 * * 0" }
-  ]
+    { "path": "/api/cron-morning",   "schedule": "0 13 * * 1-5" },
+    { "path": "/api/cron-afternoon", "schedule": "30 20 * * 1-5" },
+    { "path": "/api/cron-evening",   "schedule": "0 23 * * 1-5" },
+    { "path": "/api/cron-weekly",    "schedule": "0 14 * * 1" }
+  ],
+  "functions": {
+    "api/webhook.ts": { "maxDuration": 60 },
+    "api/cron-morning.ts": { "maxDuration": 300 },
+    "api/cron-afternoon.ts": { "maxDuration": 300 },
+    "api/cron-evening.ts": { "maxDuration": 300 },
+    "api/cron-weekly.ts": { "maxDuration": 300 }
+  }
 }

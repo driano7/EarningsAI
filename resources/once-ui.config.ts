@@ -27,21 +27,21 @@ const code = Geist_Mono({
 const fonts = { heading, body, label, code };
 
 const style = {
-  theme: "system" as const,
+  theme: "dark" as const,
   neutral: "gray" as const,
-  brand: "blue" as const,
-  accent: "indigo" as const,
+  brand: "cyan" as const,
+  accent: "emerald" as const,
   solid: "contrast" as const,
-  solidStyle: "plastic" as const,
+  solidStyle: "flat" as const,
   border: "playful" as const,
-  surface: "filled" as const,
+  surface: "translucent" as const,
   transition: "all" as const,
   scaling: "100" as const,
 };
 
 const dataStyle = {
   variant: "gradient" as const,
-  mode: "categorical" as const,
+  mode: "divergent" as const,
   height: 24,
   axis: { stroke: "var(--neutral-alpha-weak)" },
   tick: { fill: "var(--neutral-on-background-weak)", fontSize: 11, line: false },

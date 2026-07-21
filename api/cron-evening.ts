@@ -5,6 +5,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { env } from "../lib/env";
 import { getAllUsers, getUserWatchlist } from "../lib/kv";
 import { getEarningsCalendar, getEarningsHistory, getRecommendationTrends, getQuote, formatEPSBlock, formatAnalystSignal } from "../lib/finnhub";
 import { getLogoUrl } from "../lib/logo";
@@ -15,7 +16,10 @@ import { checkAndConsumeQuota, getQuotaExceededMessage } from "../lib/quota";
 import { generateBatchReport, CompanyData } from "../lib/openrouter";
 import { buildHypeRanking } from "../lib/hype";
 
-export default async function handler(_req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.headers["x-cron-secret"] !== env.CRON_SECRET) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
   const today = new Date().toISOString().split("T")[0];
   const calendar = await getEarningsCalendar(today, today);
   const reported = calendar.filter((e) => e.actual !== null && e.actual !== undefined);
