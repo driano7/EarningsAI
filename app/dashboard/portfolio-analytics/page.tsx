@@ -19,7 +19,9 @@ import { exportCsvDownload, exportXlsxDownload } from "@/lib/chart-utils";
 
 const PERIODS = [
   { label: "1D", value: "1d" },
+  { label: "1S", value: "1w" },
   { label: "1M", value: "1m" },
+  { label: "3M", value: "3m" },
   { label: "6M", value: "6m" },
   { label: "1A", value: "1y" },
   { label: "3A", value: "3y" },
@@ -28,6 +30,7 @@ const PERIODS = [
 const CHART_TYPES = [
   { label: "Linea", value: "line" },
   { label: "Area", value: "area" },
+  { label: "Barras", value: "bar" },
 ] as const;
 
 const MOVEMENT_TYPES = [

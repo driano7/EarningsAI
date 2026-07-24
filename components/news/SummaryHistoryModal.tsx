@@ -6,7 +6,7 @@
 
 "use client";
 
-import { Column, Row, Text, IconButton, Badge } from "@once-ui-system/core";
+import { Column, Row, Text, IconButton, Badge, Card } from "@once-ui-system/core";
 import { useState, useEffect } from "react";
 
 interface SummaryHistoryModalProps {
