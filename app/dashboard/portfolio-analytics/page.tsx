@@ -418,7 +418,7 @@ export default function PortfolioAnalyticsPage() {
         <Heading variant="heading-strong-m">Historial de Movimientos</Heading>
         {movements.length === 0 ? (
           <Card padding="l" radius="m" fillWidth>
-            <Text variant="body-default-m" onBackground="neutral-weak" horizontal="center">
+            <Text variant="body-default-m" onBackground="neutral-weak" style={{ textAlign: "center" }}>
               No hay movimientos registrados. Agrega tu primer movimiento arriba.
             </Text>
           </Card>
