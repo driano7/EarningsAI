@@ -95,7 +95,7 @@ export function TickerDetailChart({ ticker, type, onClose }: Props) {
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 1500,
+        zIndex: 1600,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -110,6 +110,7 @@ export function TickerDetailChart({ ticker, type, onClose }: Props) {
           position: "absolute",
           inset: 0,
           background: "rgba(0,0,0,0.88)",
+          zIndex: 1500,
         }}
         onClick={onClose}
       />
@@ -128,6 +129,7 @@ export function TickerDetailChart({ ticker, type, onClose }: Props) {
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
+          zIndex: 2000,
         }}
       >
         <Row

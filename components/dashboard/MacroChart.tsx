@@ -81,7 +81,7 @@ export function MacroChart({ seriesId, label, unit, onClose }: Props) {
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 1500,
+        zIndex: 1600,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
