@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — once-ui.config.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 import { Lato, Fira_Code } from "next/font/google";
 
 const heading = Lato({

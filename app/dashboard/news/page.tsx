@@ -7,7 +7,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Column, Row, Heading, Text, Skeleton, Badge, IconButton } from "@once-ui-system/core";
+import { Column, Row, Heading, Text, Skeleton, Badge } from "@once-ui-system/core";
 import { NewsCard } from "@/components/news/NewsCard";
 import { FinnhubNewsCard } from "@/components/news/FinnhubNewsCard";
 import { DailySummaryCard } from "@/components/news/DailySummaryCard";
@@ -39,7 +39,7 @@ export default function NewsPage() {
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const [loadingTickers, setLoadingTickers] = useState(true);
 
-  const [latestSummary, setLatestSummary] = useState<SummaryEntry | null>(null);
+  const [summaries, setSummaries] = useState<SummaryEntry[]>([]);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -74,12 +74,12 @@ export default function NewsPage() {
       .then((r) => r.json())
       .then((data) => {
         if (data.ok && data.history?.length > 0) {
-          setLatestSummary(data.history[0]);
+          setSummaries(data.history.slice(0, 3));
         } else {
-          setLatestSummary(null);
+          setSummaries([]);
         }
       })
-      .catch(() => setLatestSummary(null))
+      .catch(() => setSummaries([]))
       .finally(() => setSummaryLoading(false));
   }, [chatId, tab]);
 
@@ -138,13 +138,6 @@ export default function NewsPage() {
             Noticias de mercado, acciones, ETFs y cryptos
           </Text>
         </Column>
-        <IconButton
-          icon="history"
-          onClick={() => setHistoryOpen(true)}
-          size="m"
-          variant="tertiary"
-          tooltip="Historial de Supernotas"
-        />
       </Row>
 
       <Row gap="s" fillWidth wrap>
@@ -178,14 +171,44 @@ export default function NewsPage() {
       {tab === "supernota" && (
         <Column gap="m" fillWidth>
           {summaryLoading ? (
-            <Skeleton shape="block" height="l" fillWidth radius="m" />
-          ) : latestSummary ? (
-            <DailySummaryCard
-              date={latestSummary.date}
-              content={latestSummary.content}
-              createdAt={latestSummary.createdAt}
-              isLatest
-            />
+            <Column gap="m">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} shape="block" height="l" fillWidth radius="m" />
+              ))}
+            </Column>
+          ) : summaries.length > 0 ? (
+            <Column gap="m" fillWidth>
+              {summaries.map((s, i) => (
+                <DailySummaryCard
+                  key={s.date}
+                  date={s.date}
+                  content={s.content}
+                  createdAt={s.createdAt}
+                  isLatest={i === 0}
+                />
+              ))}
+              <Row horizontal="end">
+                <button
+                  onClick={() => setHistoryOpen(true)}
+                  className="liquid-btn"
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 8,
+                    border: "1px solid var(--brand-strong)",
+                    background: "var(--brand-alpha-weak)",
+                    color: "var(--brand-on-background-strong)",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    fontSize: 13,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  Historial
+                </button>
+              </Row>
+            </Column>
           ) : (
             <Column fillWidth horizontal="center" padding="xl" gap="m">
               <Text variant="body-default-m" onBackground="neutral-weak">

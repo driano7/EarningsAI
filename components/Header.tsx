@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — Header.tsx
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 "use client";
 
 import { useEffect, useState } from "react";

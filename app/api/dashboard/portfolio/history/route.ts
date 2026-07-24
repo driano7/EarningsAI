@@ -1,6 +1,6 @@
 /*
  * Quartly Bot — app/api/dashboard/portfolio/history/route.ts
- * Copyright (c) Donovan Riano. All rights reserved.
+ * Copyright (c) Donovan Riaño. All rights reserved.
  * Use of this code requires prior authorization from the owner.
  */
 

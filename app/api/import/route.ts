@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — route.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 import { NextResponse } from "next/server";
 import { addStock, addEtf, addCrypto, registerUser } from "@/lib/kv";
 import { addPosition } from "@/lib/kv-portfolio";

@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — icons.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 import { IconType } from "react-icons";
 import {
   HiOutlineSquares2X2,
