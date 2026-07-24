@@ -1,7 +1,10 @@
 import { kv } from "@vercel/kv";
+import { checkAndConsumeRateLimit } from "./api-ratelimit";
 
 const FRED_BASE = "https://api.stlouisfed.org/fred/series/observations";
-const FRED_KEY = process.env.FRED_API_KEY || "";
+const FRED_KEY = process.env.FRED || "";
+const FRED_DAILY_LIMIT = 50;
+const FRED_RATE_KEY = "ratelimit:fred";
 
 export interface MacroSerie {
   id: string;
@@ -34,6 +37,9 @@ async function fetchFredSerie(seriesId: string): Promise<FredObservation> {
   const cacheKey = `fred:${seriesId}`;
   const cached = await kv.get<FredObservation>(cacheKey);
   if (cached) return cached;
+
+  const { allowed } = await checkAndConsumeRateLimit(FRED_RATE_KEY, FRED_DAILY_LIMIT);
+  if (!allowed) return { value: null, prevValue: null, date: "" };
 
   const url = `${FRED_BASE}?series_id=${seriesId}&api_key=${FRED_KEY}&file_type=json&sort_order=desc&limit=2`;
   const res = await fetch(url);

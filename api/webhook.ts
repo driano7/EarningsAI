@@ -323,6 +323,7 @@ async function handleMessage(message: { chat: { id: number; first_name?: string 
  • Precios y seguimiento de criptomonedas
  • Registrar ingresos, gastos e inversiones
  • Resumen mensual de finanzas personales
+ • Resumen diario de noticias financieras
 
 🔍 *Cómo agregar activos:*
 Escribe ${BOT_USERNAME} y el ticker o nombre de la empresa/ETF/cripto en cualquier chat\\. Selecciona el resultado para agregarlo a tu watchlist\\.
@@ -334,6 +335,7 @@ Escribe ${BOT_USERNAME} y el ticker o nombre de la empresa/ETF/cripto en cualqui
 /mycryptos — Ver y eliminar cryptos de tu watchlist
 /link — Vincular con Quartly Dashboard web
 /report — Reporte manual de tus favoritos ahora
+/news — Resumen diario de noticias financieras
 /income — Registrar ingreso: /income [cantidad] [categoría] [descripción]
 /expense — Registrar gasto: /expense [cantidad] [categoría] [descripción]
 /invest — Registrar inversión: /invest [cantidad] [ticker] [tipo]
@@ -362,6 +364,7 @@ Escribe ${BOT_USERNAME} y el ticker o nombre de la empresa/ETF/cripto en cualqui
   if (cmd.startsWith("/categories ")) return handleSubCategoriesCommand(chatId, text);
   if (cmd === "/categories") return handleCategoriesCommand(chatId);
   if (cmd === "/export_csv" || cmd === "/export") return handleExportCsvCommand(chatId);
+  if (cmd === "/news") return handleNewsCommand(chatId);
 }
 
 async function handleMyStocks(chatId: string) {
@@ -850,6 +853,12 @@ async function handleExportCsvCommand(chatId: string) {
     method: "POST",
     body: formData,
   });
+}
+
+async function handleNewsCommand(chatId: string) {
+  const { generateDailyNewsSummary } = await import("../lib/news-summary");
+  const summary = await generateDailyNewsSummary(chatId);
+  await sendMessage(chatId, summary);
 }
 
 function parseFinanceArgs(text: string): { amount: number; category: string; description: string } | null {
