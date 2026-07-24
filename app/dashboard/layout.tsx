@@ -216,9 +216,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <Column
         fillWidth
         padding={isMobile ? "s" : "l"}
-        paddingTop={isMobile ? "80px" : "100px"}
-        paddingBottom={isMobile ? "120px" : "l"}
         gap="l"
+        style={{
+          paddingTop: isMobile ? 80 : 100,
+          paddingBottom: isMobile ? 120 : undefined,
+        }}
       >
         {children}
         <Footer />
