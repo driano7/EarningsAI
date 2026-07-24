@@ -112,10 +112,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             display: "flex",
             alignItems: "center",
             gap: isMobile ? 8 : 16,
-            padding: isMobile ? "10px 14px" : "12px 20px",
+            padding: isMobile ? "10px 14px" : "12px 24px",
             borderRadius: "2rem",
-            width: "min(900px, 100%)",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+            width: "min(1400px, 98%)",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+            background: "rgba(10, 10, 12, 0.98)",
+            border: "1px solid rgba(255, 255, 255, 0.18)",
           }}
         >
           {/* Logo */}

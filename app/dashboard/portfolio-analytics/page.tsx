@@ -14,7 +14,6 @@ import { getRandomBarColor, CHART_GLASS_STYLE } from "@/lib/chartColors";
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-  CandlestickChart, Candlestick,
 } from "recharts";
 import { exportCsvDownload, exportXlsxDownload } from "@/lib/chart-utils";
 
@@ -438,12 +437,28 @@ export default function PortfolioAnalyticsPage() {
                       ))}
                     </Pie>
                     <Tooltip
-                      contentStyle={{
-                        background: "rgba(255,255,255,0.04)",
-                        backdropFilter: "blur(24px)",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        borderRadius: "0.75rem",
-                        color: "var(--neutral-on-background-strong)",
+                      content={({ active, payload }) => {
+                        if (!active || !payload || !payload[0]) return null;
+                        const { name, value, percent } = payload[0].payload;
+                        return (
+                          <div style={{
+                            background: "rgba(255,255,255,0.04)",
+                            backdropFilter: "blur(24px)",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            borderRadius: "0.75rem",
+                            padding: "12px 16px",
+                            color: "var(--neutral-on-background-strong)",
+                            minWidth: 160,
+                          }}>
+                            <div style={{ fontWeight: 600, marginBottom: 4 }}>{name}</div>
+                            <div style={{ color: "var(--brand-on-background-strong)", fontSize: "1.1rem", fontWeight: 600 }}>
+                              ${Number(value).toLocaleString()}
+                            </div>
+                            <div style={{ fontSize: "0.8rem", color: "var(--neutral-on-background-weak)", marginTop: 4 }}>
+                              {((percent ?? 0) * 100).toFixed(1)}% del portafolio
+                            </div>
+                          </div>
+                        );
                       }}
                     />
                   </PieChart>
@@ -465,12 +480,28 @@ export default function PortfolioAnalyticsPage() {
                       ))}
                     </Pie>
                     <Tooltip
-                      contentStyle={{
-                        background: "rgba(255,255,255,0.04)",
-                        backdropFilter: "blur(24px)",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        borderRadius: "0.75rem",
-                        color: "var(--neutral-on-background-strong)",
+                      content={({ active, payload }) => {
+                        if (!active || !payload || !payload[0]) return null;
+                        const { name, value, percent } = payload[0].payload;
+                        return (
+                          <div style={{
+                            background: "rgba(255,255,255,0.04)",
+                            backdropFilter: "blur(24px)",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            borderRadius: "0.75rem",
+                            padding: "12px 16px",
+                            color: "var(--neutral-on-background-strong)",
+                            minWidth: 160,
+                          }}>
+                            <div style={{ fontWeight: 600, marginBottom: 4 }}>{name}</div>
+                            <div style={{ color: "var(--brand-on-background-strong)", fontSize: "1.1rem", fontWeight: 600 }}>
+                              ${Number(value).toLocaleString()}
+                            </div>
+                            <div style={{ fontSize: "0.8rem", color: "var(--neutral-on-background-weak)", marginTop: 4 }}>
+                              {((percent ?? 0) * 100).toFixed(1)}% del total
+                            </div>
+                          </div>
+                        );
                       }}
                     />
                   </PieChart>

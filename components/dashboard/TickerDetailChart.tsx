@@ -145,7 +145,7 @@ export function TickerDetailChart({ ticker, type, onClose }: Props) {
               <Text variant="body-default-s" onBackground="neutral-weak">{error}</Text>
             </Column>
           ) : (
-            <div style={{ width: "100%", height: 350 }}>
+            <div style={{ width: "100%", height: 350, background: "var(--neutral-background)", borderRadius: "0.75rem" }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--neutral-alpha-weak)" />
