@@ -10,11 +10,12 @@ import {
   Text,
   IconButton,
   Icon,
-  ThemeSwitcher,
 } from "@once-ui-system/core";
 import type { IconName } from "@/resources/icons";
 import { FloatingAssistant } from "@/components/dashboard/FloatingAssistant";
 import { MobileDock } from "@/components/dashboard/MobileDock";
+import { AnimatedThemeToggle } from "@/components/dashboard/AnimatedThemeToggle";
+import { Footer } from "@/components/dashboard/Footer";
 
 interface NavItem {
   label: string;
@@ -92,7 +93,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Text variant="heading-default-s">Quartly</Text>
           </Flex>
           <Row gap="s" vertical="center">
-            <ThemeSwitcher />
+            <AnimatedThemeToggle />
             <IconButton
               icon="logout"
               onClick={handleLogout}
@@ -104,6 +105,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Column fillWidth padding="s" overflow="auto" style={{ maxHeight: "calc(100vh - 60px)" }}>
           {children}
         </Column>
+        <Footer />
         <MobileDock onChatToggle={toggleChat} chatOpen={chatOpen} />
         <FloatingAssistant open={chatOpen} onToggle={toggleChat} />
       </Column>
@@ -183,13 +185,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           horizontal="between"
           style={{ borderBottom: "1px solid var(--neutral-alpha-weak)" }}
         >
-          <ThemeSwitcher />
+          <AnimatedThemeToggle />
           <Text variant="body-default-s" onBackground="neutral-weak">
             Quartly Dashboard
           </Text>
         </Row>
         <Column fillWidth padding="l" overflow="auto" style={{ maxHeight: "calc(100vh - 60px)" }}>
           {children}
+          <Footer />
         </Column>
       </Column>
       <FloatingAssistant />

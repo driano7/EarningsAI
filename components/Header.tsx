@@ -11,10 +11,10 @@ import {
   Badge,
   ToggleButton,
   Fade,
-  ThemeSwitcher,
 } from "@once-ui-system/core";
 import type { IconName } from "@/resources/icons";
 import { formatCurrency } from "@/lib/formatFinance";
+import { AnimatedThemeToggle } from "@/components/dashboard/AnimatedThemeToggle";
 
 interface NavItem {
   label: string;
@@ -123,7 +123,7 @@ export default function Header() {
           <Badge background="brand-alpha-medium" onBackground="brand-strong">
             {balance !== null ? formatCurrency(balance) : "—"}
           </Badge>
-          <ThemeSwitcher />
+          <AnimatedThemeToggle />
         </Row>
       </Row>
     </Fade>

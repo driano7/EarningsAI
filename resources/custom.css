@@ -156,3 +156,100 @@
   border-color: var(--brand-medium);
   box-shadow: 0 0 0 2px var(--brand-alpha-weak);
 }
+
+/* ─── Theme toggle animation ─────────────────────────────── */
+
+:root {
+  --theme-transition-duration: 0.45s;
+}
+
+.theme-transition,
+.theme-transition * {
+  transition:
+    background-color var(--theme-transition-duration) ease,
+    color var(--theme-transition-duration) ease,
+    border-color var(--theme-transition-duration) ease,
+    box-shadow var(--theme-transition-duration) ease !important;
+}
+
+.theme-toggle-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--neutral-alpha-weak);
+  border-color: var(--neutral-alpha-medium);
+}
+
+.theme-toggle-btn:active {
+  transform: scale(0.85) rotate(360deg);
+  transition: transform 0.25s cubic-bezier(0.17, 0.55, 0.55, 1);
+}
+
+.theme-toggle-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: themePulse 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes themePulse {
+  0% {
+    opacity: 0.6;
+    transform: scale(0.2);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.8);
+  }
+}
+
+.theme-toggle-icon {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-toggle-icon-enter {
+  animation: themeIconIn 0.3s cubic-bezier(0.17, 0.55, 0.55, 1) forwards;
+}
+
+.theme-toggle-icon-exit {
+  animation: themeIconOut 0.2s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+@keyframes themeIconIn {
+  0% {
+    opacity: 0;
+    transform: rotate(-90deg) scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+@keyframes themeIconOut {
+  0% {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(90deg) scale(0.5);
+  }
+}
