@@ -62,10 +62,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } else if (body.callback_query) {
       await handleCallback(body.callback_query);
     } else if (body.message) {
-      await handleMessage(body.message, res);
+      await handleMessage(body.message);
     }
   } catch (err) {
     console.error("Webhook handler error:", err);
+    try {
+      const chatId = body.message?.chat?.id
+        ? String(body.message.chat.id)
+        : body.callback_query?.message?.chat?.id
+          ? String(body.callback_query.message.chat.id)
+          : null;
+      if (chatId) {
+        await sendMessage(chatId, "⚠️ Error procesando tu solicitud. Intenta de nuevo.");
+      }
+    } catch { /* don't crash if error notification fails */ }
   }
 
   return res.status(200).json({ ok: true });
@@ -276,7 +286,7 @@ async function handleAddFromInline(chatId: string, ticker: string, isEtf: boolea
   await sendMessageWithLogo(chatId, fullMsg, logoUrl, "Markdown", replyMarkup);
 }
 
-async function handleMessage(message: { chat: { id: number; first_name?: string }; text?: string }, res?: VercelResponse) {
+async function handleMessage(message: { chat: { id: number; first_name?: string }; text?: string }) {
   const chatId = String(message.chat.id);
   const text = (message.text || "").trim();
 
@@ -341,17 +351,17 @@ Escribe ${BOT_USERNAME} y el ticker o nombre de la empresa/ETF/cripto en cualqui
   if (cmd === "/link" || cmd.startsWith("/link ")) return handleLinkCommand(chatId, text);
   if (cmd === "/report") return handleReport(chatId);
 
-  if (cmd.startsWith("/income ")) return handleFinanceCommand(res!, chatId, "income", text);
-  if (cmd.startsWith("/expense ")) return handleFinanceCommand(res!, chatId, "expense", text);
-  if (cmd.startsWith("/invest ")) return handleInvestCommand(res!, chatId, text);
+  if (cmd.startsWith("/income ")) return handleFinanceCommand(chatId, "income", text);
+  if (cmd.startsWith("/expense ")) return handleFinanceCommand(chatId, "expense", text);
+  if (cmd.startsWith("/invest ")) return handleInvestCommand(chatId, text);
   if (cmd.startsWith("/summary")) {
     const parts = text.split(" ");
     const mes = parts[1] || undefined;
-    return handleSummaryCommand(res!, chatId, mes);
+    return handleSummaryCommand(chatId, mes);
   }
-  if (cmd.startsWith("/categories ")) return handleSubCategoriesCommand(res!, chatId, text);
-  if (cmd === "/categories") return handleCategoriesCommand(res!, chatId);
-  if (cmd === "/export_csv" || cmd === "/export") return handleExportCsvCommand(res!, chatId);
+  if (cmd.startsWith("/categories ")) return handleSubCategoriesCommand(chatId, text);
+  if (cmd === "/categories") return handleCategoriesCommand(chatId);
+  if (cmd === "/export_csv" || cmd === "/export") return handleExportCsvCommand(chatId);
 }
 
 async function handleMyStocks(chatId: string) {
@@ -671,13 +681,13 @@ async function handleReport(chatId: string) {
 
 
 
-async function handleFinanceCommand(res: VercelResponse, chatId: string, type: "income" | "expense", text: string) {
+async function handleFinanceCommand(chatId: string, type: "income" | "expense", text: string) {
   const parts = parseFinanceArgs(text);
   if (!parts) {
     const cmdLabel = type === "income" ? "/income" : "/expense";
     const example = type === "income" ? '/income 15000 salario "Quincena enero"' : '/expense 450 comida "Cena restaurante"';
     await sendMessage(chatId, "❌ Formato incorrecto.\nUsa: *" + cmdLabel + " [cantidad] [categoría] [descripción]*\nEjemplo: " + example);
-    return res.status(200).json({ ok: true });
+    return;
   }
 
   const { amount, category, description } = parts;
@@ -688,7 +698,7 @@ async function handleFinanceCommand(res: VercelResponse, chatId: string, type: "
     const catList = validCats.map((c) => "• " + c).join("\n");
     const typeLabel = type === "income" ? "ingresos" : "gastos";
     await sendMessage(chatId, "❌ Categoría no válida para " + typeLabel + ".\nCategorías disponibles:\n" + catList + "\n\nUsa /categories para personalizarlas.");
-    return res.status(200).json({ ok: true });
+    return;
   }
 
   const txn = await addTransaction(chatId, type, amount, category, description);
@@ -696,14 +706,13 @@ async function handleFinanceCommand(res: VercelResponse, chatId: string, type: "
   const label = type === "income" ? "Ingreso" : "Gasto";
   const msg = emoji + " *" + label + " registrado*\nCantidad: $" + txn.amount.toLocaleString() + "\nCategoría: " + txn.category + "\nDescripción: " + txn.description + "\nFecha: " + txn.date;
   await sendMessage(chatId, msg);
-  return res.status(200).json({ ok: true });
 }
 
-async function handleInvestCommand(res: VercelResponse, chatId: string, text: string) {
+async function handleInvestCommand(chatId: string, text: string) {
   const parts = text.split(" ").filter(Boolean);
   if (parts.length < 3) {
     await sendMessage(chatId, "❌ Formato incorrecto.\nUsa: */invest [cantidad] [ticker] [tipo]*\nTipos: stock, etf, crypto\nEjemplo: /invest 5000 AAPL stock");
-    return res.status(200).json({ ok: true });
+    return;
   }
 
   const amount = parseFloat(parts[1].replace(",", ""));
@@ -712,7 +721,7 @@ async function handleInvestCommand(res: VercelResponse, chatId: string, text: st
 
   if (isNaN(amount) || amount <= 0) {
     await sendMessage(chatId, "❌ Cantidad inválida.");
-    return res.status(200).json({ ok: true });
+    return;
   }
 
   await addTransaction(chatId, "invest", amount, tipo === "crypto" ? "Crypto" : "Stock/ETF", `${ticker}`);
@@ -721,39 +730,37 @@ async function handleInvestCommand(res: VercelResponse, chatId: string, text: st
     const result = await addCrypto(chatId, ticker);
     if (!result.ok && result.error) {
       await sendMessage(chatId, result.error);
-      return res.status(200).json({ ok: true });
+      return;
     }
   } else {
     const isEtf = tipo === "etf";
     const result = isEtf ? await addEtf(chatId, ticker) : await addStock(chatId, ticker);
     if (!result.ok && result.error) {
       await sendMessage(chatId, result.error);
-      return res.status(200).json({ ok: true });
+      return;
     }
   }
 
   const investMsg = "📈 *Inversión registrada*\nCantidad: $" + amount.toLocaleString() + "\nActivo: " + ticker + " (" + tipo + ")\n✅ Agregado a tu watchlist de " + (tipo === "crypto" ? "cryptos" : "acciones") + ".";
   await sendMessage(chatId, investMsg);
-  return res.status(200).json({ ok: true });
 }
 
-async function handleSummaryCommand(res: VercelResponse, chatId: string, mes?: string) {
+async function handleSummaryCommand(chatId: string, mes?: string) {
   if (mes && !/^\d{4}-\d{2}$/.test(mes)) {
     await sendMessage(chatId, "❌ Formato de mes inválido. Usa YYYY-MM, ej: /summary 2026-04");
-    return res.status(200).json({ ok: true });
+    return;
   }
 
   const summary = await getSummary(chatId, mes);
   if (!summary) {
     await sendMessage(chatId, "📭 No hay datos financieros para este mes.\nComienza registrando con /income, /expense o /invest.");
-    return res.status(200).json({ ok: true });
+    return;
   }
 
   await sendMessage(chatId, formatSummary(summary));
-  return res.status(200).json({ ok: true });
 }
 
-async function handleCategoriesCommand(res: VercelResponse, chatId: string) {
+async function handleCategoriesCommand(chatId: string) {
   const cats = await getUserCategories(chatId);
   const incomeList = cats.income.map((c) => `• ${c}`).join("\n");
   const expenseList = cats.expense.map((c) => `• ${c}`).join("\n");
@@ -771,26 +778,25 @@ Para eliminar: /categories remove income|expense [nombre]
 Para resetear: /categories reset
 
 Ejemplo: /categories add expense "Suscripciones"`);
-  return res.status(200).json({ ok: true });
 }
 
-async function handleSubCategoriesCommand(res: VercelResponse, chatId: string, text: string) {
+async function handleSubCategoriesCommand(chatId: string, text: string) {
   const parts = text.split(" ").filter(Boolean);
   if (parts.length < 4) {
-    return handleCategoriesCommand(res, chatId);
+    return handleCategoriesCommand(chatId);
   }
 
   const subCmd = parts[1].toLowerCase();
   const type = parts[2].toLowerCase() as "income" | "expense";
   if (type !== "income" && type !== "expense") {
     await sendMessage(chatId, "❌ Tipo inválido. Usa income o expense.");
-    return res.status(200).json({ ok: true });
+    return;
   }
 
   const catName = parts.slice(3).join(" ").replace(/"/g, "").trim();
   if (!catName) {
     await sendMessage(chatId, "❌ Nombre de categoría vacío.");
-    return res.status(200).json({ ok: true });
+    return;
   }
 
   const cats = await getUserCategories(chatId);
@@ -798,7 +804,7 @@ async function handleSubCategoriesCommand(res: VercelResponse, chatId: string, t
   if (subCmd === "add") {
     if (cats[type].some((c) => c.toLowerCase() === catName.toLowerCase())) {
       await sendMessage(chatId, `⚠️ La categoría "${catName}" ya existe en ${type}.`);
-      return res.status(200).json({ ok: true });
+      return;
     }
     cats[type].push(catName);
     await setUserCategories(chatId, cats);
@@ -807,7 +813,7 @@ async function handleSubCategoriesCommand(res: VercelResponse, chatId: string, t
     const idx = cats[type].findIndex((c) => c.toLowerCase() === catName.toLowerCase());
     if (idx === -1) {
       await sendMessage(chatId, `❌ Categoría "${catName}" no encontrada en ${type}.`);
-      return res.status(200).json({ ok: true });
+      return;
     }
     cats[type].splice(idx, 1);
     await setUserCategories(chatId, cats);
@@ -816,23 +822,21 @@ async function handleSubCategoriesCommand(res: VercelResponse, chatId: string, t
     await setUserCategories(chatId, DEFAULT_CATEGORIES);
     await sendMessage(chatId, "🔄 Categorías restauradas a valores por defecto.");
   } else {
-    await handleCategoriesCommand(res, chatId);
+    await handleCategoriesCommand(chatId);
   }
-
-  return res.status(200).json({ ok: true });
 }
 
-async function handleExportCsvCommand(res: VercelResponse, chatId: string) {
+async function handleExportCsvCommand(chatId: string) {
   const txns = await getFinanceTransactions(chatId);
   if (txns.length === 0) {
     await sendMessage(chatId, "📭 No hay datos financieros para exportar.");
-    return res.status(200).json({ ok: true });
+    return;
   }
 
   if (txns.length <= 30) {
     const csv = generateCSV(chatId, txns);
     await sendMessage(chatId, `📊 *Exportación CSV*\n\`\`\`\n${csv}\n\`\`\``);
-    return res.status(200).json({ ok: true });
+    return;
   }
 
   const csv = generateCSV(chatId, txns);
@@ -846,8 +850,6 @@ async function handleExportCsvCommand(res: VercelResponse, chatId: string) {
     method: "POST",
     body: formData,
   });
-
-  return res.status(200).json({ ok: true });
 }
 
 function parseFinanceArgs(text: string): { amount: number; category: string; description: string } | null {

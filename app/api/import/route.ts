@@ -4,6 +4,10 @@ import { addPosition } from "@/lib/kv-portfolio";
 import type { PortfolioPosition } from "@/lib/types";
 import { kv } from "@vercel/kv";
 
+async function clearPositions(chatId: string) {
+  await kv.set(`portfolio:${chatId}`, []);
+}
+
 const CHAT_ID = "1057816434";
 
 const STOCKS = [
@@ -87,6 +91,10 @@ export async function GET() {
   for (const t of ETFS) results.push(`etf ${t} ${(await addEtf(CHAT_ID, t)).ok ? "✅" : "❌"}`);
   for (const t of CRYPTOS) results.push(`crypto ${t} ${(await addCrypto(CHAT_ID, t)).ok ? "✅" : "❌"}`);
 
+  /* Clear existing positions to avoid duplicates from repeated imports */
+  await clearPositions(CHAT_ID);
+  results.push("cleared existing positions ✅");
+
   for (const p of POSITIONS) {
     const pos: PortfolioPosition = {
       id: crypto.randomUUID(),
@@ -114,7 +122,7 @@ export async function GET() {
   results.push(`expenses stored: ${EXPENSES.length} items ✅`);
   results.push(`income stored: ${INCOME_ITEMS.length} items ✅`);
 
-  /* Sync CSV expenses → finance transactions for Finanzas page */
+  /* Sync CSV expenses → finance transactions for Finanzas page (clear first) */
   const finKey = `finance:${CHAT_ID}:transactions`;
   const finTxns = [];
   const monthDates = ["2026-04-28", "2026-04-15", "2026-03-28", "2026-03-15", "2026-03-05", "2026-02-28", "2026-02-15", "2026-02-05", "2026-01-28", "2026-01-15", "2026-01-05", "2025-12-28", "2025-12-15", "2025-12-05", "2025-11-28", "2025-11-15", "2025-11-05", "2025-10-28"];

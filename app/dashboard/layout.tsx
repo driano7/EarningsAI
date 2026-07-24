@@ -13,6 +13,7 @@ import {
   ThemeSwitcher,
 } from "@once-ui-system/core";
 import type { IconName } from "@/resources/icons";
+import { FloatingAssistant } from "@/components/dashboard/FloatingAssistant";
 
 interface NavItem {
   label: string;
@@ -133,6 +134,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </Column>
       </Column>
+      <FloatingAssistant />
     </Row>
   );
 }
