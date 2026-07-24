@@ -14,6 +14,7 @@ import { getRandomBarColor, CHART_GLASS_STYLE } from "@/lib/chartColors";
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  AreaChart, Area,
 } from "recharts";
 import { exportCsvDownload, exportXlsxDownload } from "@/lib/chart-utils";
 
