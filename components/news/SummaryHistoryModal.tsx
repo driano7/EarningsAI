@@ -193,7 +193,7 @@ export function SummaryHistoryModal({ isOpen, onClose, chatId }: SummaryHistoryM
                         icon="chevronDown"
                         size="s"
                         variant="tertiary"
-                        onClick={(e) => { e.stopPropagation(); setExpandedDate(summary.date); }}
+                        onClick={(e: React.MouseEvent) => { e.stopPropagation(); setExpandedDate(summary.date); }}
                       />
                     </Row>
                   ) : (
@@ -209,7 +209,7 @@ export function SummaryHistoryModal({ isOpen, onClose, chatId }: SummaryHistoryM
                           icon="close"
                           size="s"
                           variant="tertiary"
-                          onClick={(e) => { e.stopPropagation(); setExpandedDate(null); }}
+                          onClick={(e: React.MouseEvent) => { e.stopPropagation(); setExpandedDate(null); }}
                         />
                       </Row>
                       <Text

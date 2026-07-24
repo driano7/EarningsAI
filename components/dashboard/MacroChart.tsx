@@ -40,7 +40,7 @@ const CHART_TYPES = [
   { label: "Linea", value: "line" },
   { label: "Area", value: "area" },
   { label: "Barras", value: "bar" },
-] as const;
+];
 
 export function MacroChart({ seriesId, label, unit, onClose }: Props) {
   const [data, setData] = useState<MacroHistorical[]>([]);

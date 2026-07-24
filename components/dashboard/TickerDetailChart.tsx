@@ -26,13 +26,13 @@ const PERIODS = [
   { label: "6M", value: "6m" },
   { label: "1A", value: "1y" },
   { label: "3A", value: "3y" },
-] as const;
+];
 
 const CHART_TYPES = [
   { label: "Linea", value: "line" },
   { label: "Area", value: "area" },
   { label: "Barras", value: "bar" },
-] as const;
+];
 
 interface Props {
   ticker: string;
@@ -160,6 +160,7 @@ export function TickerDetailChart({ ticker, type, onClose }: Props) {
           </Row>
           <Row gap="xs" vertical="center">
             <Select
+              id="period-select"
               options={PERIODS}
               value={period}
               onSelect={setPeriod}
@@ -167,6 +168,7 @@ export function TickerDetailChart({ ticker, type, onClose }: Props) {
               style={{ width: 100 }}
             />
             <Select
+              id="chart-type-select"
               options={CHART_TYPES}
               value={chartType}
               onSelect={setChartType}

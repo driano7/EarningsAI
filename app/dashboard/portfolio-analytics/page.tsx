@@ -32,7 +32,7 @@ const CHART_TYPES = [
   { label: "Linea", value: "line" },
   { label: "Area", value: "area" },
   { label: "Barras", value: "bar" },
-] as const;
+];
 
 const MOVEMENT_TYPES = [
   { label: "Compra", value: "buy", color: "success" },
