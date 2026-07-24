@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — lib/macro.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 import { kv } from "@vercel/kv";
 import { checkAndConsumeRateLimit } from "./api-ratelimit";
 
@@ -24,7 +30,7 @@ interface FredObservation {
 
 const MACRO_SERIES = [
   { id: "FEDFUNDS",   label: "Tasa Fed",        unit: "%" },
-  { id: "CPIAUCSL",   label: "Inflación USA",    unit: "%" },
+  { id: "CPIAUCSL",   label: "Inflación USA",    unit: "índice" },
   { id: "UNRATE",     label: "Desempleo USA",    unit: "%" },
   { id: "T10Y2Y",     label: "Curva 10Y-2Y",     unit: "bps" },
   { id: "DCOILWTICO", label: "Petróleo WTI",     unit: "USD" },
@@ -67,7 +73,10 @@ export async function getMacroSnapshot(): Promise<MacroSerie[]> {
   const results = await Promise.allSettled(
     MACRO_SERIES.map(async (serie) => {
       const { value, prevValue, date } = await fetchFredSerie(serie.id);
-      const change = value !== null && prevValue !== null ? value - prevValue : null;
+      let change: number | null = null;
+      if (value !== null && prevValue !== null && prevValue !== 0) {
+        change = ((value - prevValue) / Math.abs(prevValue)) * 100;
+      }
       return { ...serie, value, previousValue: prevValue, change, date } satisfies MacroSerie;
     })
   );

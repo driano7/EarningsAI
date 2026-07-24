@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — components/dashboard/MacroChart.tsx
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -41,7 +47,9 @@ export function MacroChart({ seriesId, label, unit, onClose }: Props) {
 
   const latest = data.length > 0 ? data[data.length - 1].value : null;
   const prev = data.length > 1 ? data[data.length - 2].value : null;
-  const change = latest !== null && prev !== null ? latest - prev : null;
+  const change = latest !== null && prev !== null && prev !== 0
+    ? ((latest - prev) / Math.abs(prev)) * 100
+    : null;
 
   return (
     <Column
@@ -49,6 +57,7 @@ export function MacroChart({ seriesId, label, unit, onClose }: Props) {
       radius="m"
       fillWidth
       gap="m"
+      className="glass-card"
       style={{
         border: "1px solid var(--neutral-alpha-medium)",
         background: "var(--neutral-alpha-weak)",
@@ -67,7 +76,7 @@ export function MacroChart({ seriesId, label, unit, onClose }: Props) {
               variant="label-default-xs"
               onBackground={change >= 0 ? "success-medium" : "danger-medium"}
             >
-              {change >= 0 ? "+" : ""}{change.toFixed(3)}
+              {change >= 0 ? "+" : ""}{change.toFixed(2)}%
             </Text>
           )}
         </Row>
@@ -96,10 +105,13 @@ export function MacroChart({ seriesId, label, unit, onClose }: Props) {
               />
               <Tooltip
                 contentStyle={{
-                  background: "var(--neutral-alpha-weak)",
-                  border: "1px solid var(--neutral-alpha-medium)",
+                  background: "rgba(255,255,255,0.04)",
+                  backdropFilter: "blur(24px) saturate(1.6)",
+                  border: "1px solid rgba(255,255,255,0.1)",
                   borderRadius: 8,
-                  backdropFilter: "blur(12px)",
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)",
+                  padding: "0.5rem 0.75rem",
+                  color: "var(--neutral-on-background-strong)",
                 }}
                 formatter={(value) => [`${Number(value).toFixed(3)} ${unit}`, label]}
               />

@@ -1,10 +1,17 @@
+/*
+ * Quartly Bot — app/api/dashboard/favorites/earnings/route.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { getUserStocks, getUserEtfs, getUserCryptos, getCachedTickerData, setCachedTickerData } from "@/lib/kv";
 import type { CachedTickerEarnings } from "@/lib/kv";
-import { getEarningsHistory, getRecommendationTrends, getQuote, getCandles } from "@/lib/finnhub";
-import type { EarningEvent, RecommendationTrend, QuoteData } from "@/lib/finnhub";
+import { getEarningsHistory, getRecommendationTrends, getQuote, getCandles, getEarningsCalendar } from "@/lib/finnhub";
+import type { EarningEvent, RecommendationTrend, QuoteData, CalendarEarning } from "@/lib/finnhub";
 import { getLogoUrl } from "@/lib/logo";
-import { getCryptoDetails, getCryptoHistory } from "@/lib/coingecko";
+import { getCMCQuote, isCMCEnabled } from "@/lib/coinmarketcap";
+import { isTwelveDataEnabled, getSparkline } from "@/lib/twelvedata";
 
 interface StockDetail {
   ticker: string;
@@ -13,6 +20,7 @@ interface StockDetail {
   analystSignals: RecommendationTrend[];
   quote: QuoteData | null;
   sparkline: number[];
+  nextEarnings: CalendarEarning | null;
 }
 
 interface EtfDetail {
@@ -52,17 +60,35 @@ async function fetchStockDetail(ticker: string): Promise<StockDetail> {
       analystSignals: cached.analystSignals as RecommendationTrend[],
       quote: cached.quote as QuoteData | null,
       sparkline: cached.sparkline,
+      nextEarnings: null,
     };
   }
-  const [earnings, signals, quote, logo, candles] = await Promise.all([
+
+  const today = new Date();
+  const from = today.toISOString().split("T")[0];
+  const futureDate = new Date(today.getTime() + 90 * 24 * 60 * 60 * 1000);
+  const to = futureDate.toISOString().split("T")[0];
+
+  let sparkline: number[] = [];
+
+  if (isTwelveDataEnabled()) {
+    sparkline = await getSparkline(ticker, 30);
+  }
+
+  const [earnings, signals, quote, logo, candles, calendar] = await Promise.all([
     getEarningsHistory(ticker),
     getRecommendationTrends(ticker),
     getQuote(ticker),
     getLogoUrl(ticker, false),
-    getCandles(ticker),
+    sparkline.length === 0 ? getCandles(ticker) : Promise.resolve(null),
+    getEarningsCalendar(from, to, ticker),
   ]);
-  const sparkline = candles?.closes?.slice(-30) || [];
-  const detail: StockDetail = { ticker, logo, earnings, analystSignals: signals, quote, sparkline };
+
+  if (sparkline.length === 0 && candles?.closes) {
+    sparkline = candles.closes.slice(-30);
+  }
+  const nextEarnings = calendar.length > 0 ? calendar[0] : null;
+  const detail: StockDetail = { ticker, logo, earnings, analystSignals: signals, quote, sparkline, nextEarnings };
   if (sparkline.length > 1) {
     await setCachedTickerData(ticker, {
       logo,
@@ -128,19 +154,16 @@ export async function GET(req: NextRequest) {
       }),
       sequential(cryptoTickers, 200, async (ticker) => {
         try {
-          const [details, history] = await Promise.all([
-            getCryptoDetails(ticker),
-            getCryptoHistory(ticker, 30),
-          ]);
-          const sparkline = (history?.prices || []).map((p) => p[1]).slice(-30);
+          const cmcQuote = isCMCEnabled() ? await getCMCQuote(ticker) : null;
+          const logo = cmcQuote ? `https://s2.coinmarketcap.com/static/img/coins/64x64/${cmcQuote.id}.png` : null;
           return {
             ticker,
-            logo: details?.logo ?? null,
-            priceUsd: details?.priceUsd ?? null,
-            change24h: details?.change24h ?? null,
-            change7d: details?.change7d ?? null,
-            marketCapUsd: details?.marketCapUsd ?? null,
-            sparkline,
+            logo,
+            priceUsd: cmcQuote?.price ?? null,
+            change24h: cmcQuote?.change24h ?? null,
+            change7d: cmcQuote?.change7d ?? null,
+            marketCapUsd: cmcQuote?.marketCap ?? null,
+            sparkline: [],
           } satisfies CryptoDetail;
         } catch { return null; }
       }),

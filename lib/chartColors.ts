@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — lib/chartColors.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 export const CHART_COLORS = {
   positive:  "var(--emerald-400)",
   negative:  "var(--red-400)",

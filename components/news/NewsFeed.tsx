@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — components/news/NewsFeed.tsx
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 "use client";
 
 import { useState, useEffect } from "react";

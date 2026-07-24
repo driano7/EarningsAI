@@ -1,6 +1,7 @@
 /*
  * Quartly Bot — api/cron-news.ts
- * Daily supernota at 8 AM UTC Mon-Fri. History auto-expires after 30 days.
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
  */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";

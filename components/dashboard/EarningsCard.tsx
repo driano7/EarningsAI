@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — components/dashboard/EarningsCard.tsx
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 "use client";
 
 import { Column, Row, Text, Badge, Icon } from "@once-ui-system/core";

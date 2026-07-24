@@ -121,6 +121,7 @@ export default function AddPositionModal({
               padding="xl"
               gap="l"
               radius="m"
+              className="liquid-glass"
               style={{
                 background: "var(--neutral-surface)",
                 border: "1px solid var(--neutral-alpha-medium)",
@@ -159,6 +160,7 @@ export default function AddPositionModal({
                       <select
                         value={type}
                         onChange={(e) => setType(e.target.value)}
+                        className="liquid-select"
                         style={{
                           width: "100%",
                           padding: "8px 12px",

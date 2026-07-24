@@ -158,7 +158,15 @@ export default function FinancePage() {
               <XAxis dataKey="month" tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 12 }} />
               <YAxis tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 12 }} />
               <Tooltip
-                contentStyle={{ background: "var(--neutral-alpha-weak)", border: "1px solid var(--neutral-alpha-medium)", borderRadius: 8 }}
+                contentStyle={{
+                  background: "rgba(255,255,255,0.04)",
+                  backdropFilter: "blur(24px) saturate(1.6)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: 8,
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)",
+                  padding: "0.5rem 0.75rem",
+                  color: "var(--neutral-on-background-strong)",
+                }}
               />
               <Legend />
               <Bar dataKey="income" fill={CHART_COLORS.positive} name="Ingresos" radius={[4, 4, 0, 0]} />
@@ -187,7 +195,15 @@ export default function FinancePage() {
                 ))}
               </Pie>
               <Tooltip
-                contentStyle={{ background: "var(--neutral-alpha-weak)", border: "1px solid var(--neutral-alpha-medium)", borderRadius: 8 }}
+                contentStyle={{
+                  background: "rgba(255,255,255,0.04)",
+                  backdropFilter: "blur(24px) saturate(1.6)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: 8,
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)",
+                  padding: "0.5rem 0.75rem",
+                  color: "var(--neutral-on-background-strong)",
+                }}
               />
               <Legend />
             </PieChart>

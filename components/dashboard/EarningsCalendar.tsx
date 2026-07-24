@@ -99,6 +99,7 @@ export default function EarningsCalendar({ events }: EarningsCalendarProps) {
           {dayEvents.map((evt) => (
             <div
               key={`${evt.ticker}-${evt.fiscalQuarter}`}
+              className="liquid-glass-sm"
               style={{
                 padding: "8px 12px",
                 borderRadius: 8,

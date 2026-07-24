@@ -1,6 +1,8 @@
 /*
  * Quartly Bot — lib/gs-quant.ts
- * Financial time series, analytics, and calculations
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ *
  * Inspired by Goldman Sachs gs-quant (Python) — ported to TypeScript
  */
 

@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — hooks/useFinanceData.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 import { useEffect, useState, useCallback } from "react";
 import { formatCurrency } from "@/lib/formatFinance";
 
@@ -24,12 +30,19 @@ export interface PortfolioAllocation {
   fill: string;
 }
 
+export interface MonthlyFinance {
+  month: string;
+  income: number;
+  expense: number;
+}
+
 export interface FinanceData {
   balance: number;
   monthlyChange: number | null;
   kpis: KPIData[];
   recentTransactions: TransactionData[];
   portfolioAllocation: PortfolioAllocation[];
+  monthlyFinance: MonthlyFinance[];
   updatedAt: string;
 }
 
@@ -58,15 +71,17 @@ export function useFinanceData(): {
     setError(null);
 
     try {
-      const [statsRes, txnsRes, portfolioRes] = await Promise.all([
+      const [statsRes, txnsRes, portfolioRes, financeRes] = await Promise.all([
         fetch("/api/dashboard/stats"),
         fetch(`/api/dashboard/transactions?chatId=${chatId}`),
         fetch(`/api/dashboard/portfolio?chatId=${chatId}`),
+        fetch(`/api/dashboard/finance-summary?chatId=${chatId}`),
       ]);
 
       const stats = await statsRes.json();
       const txns = await txnsRes.json();
       const portfolio = await portfolioRes.json();
+      const finance = await financeRes.json();
 
       const positions = portfolio.ok ? (portfolio.positions || []) : [];
       const transactions: TransactionData[] = txns.ok ? (txns.transactions || []) : [];
@@ -86,6 +101,12 @@ export function useFinanceData(): {
           fill: CHART_COLORS[i % CHART_COLORS.length],
         })
       );
+
+      const monthlyFinance: MonthlyFinance[] = finance.ok ? (finance.monthly || []) : [];
+
+      const totalIncome = finance.ok ? finance.totalIncome : 0;
+      const totalExpense = finance.ok ? finance.totalExpense : 0;
+      const monthlyChange = totalIncome > 0 ? ((totalIncome - totalExpense) / totalIncome) * 100 : null;
 
       const kpis: KPIData[] = [
         {
@@ -116,10 +137,11 @@ export function useFinanceData(): {
 
       setData({
         balance: portfolioValue,
-        monthlyChange: null,
+        monthlyChange,
         kpis,
         recentTransactions,
         portfolioAllocation,
+        monthlyFinance,
         updatedAt: new Date().toISOString(),
       });
     } catch (err) {

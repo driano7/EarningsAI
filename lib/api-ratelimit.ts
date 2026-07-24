@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — lib/api-ratelimit.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 import { kv } from "@vercel/kv";
 
 interface RateLimitData {

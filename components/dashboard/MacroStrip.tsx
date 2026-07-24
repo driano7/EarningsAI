@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — components/dashboard/MacroStrip.tsx
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 "use client";
 
 import { useState } from "react";
@@ -44,6 +50,7 @@ export function MacroStrip() {
               key={serie.id}
               padding="s"
               radius="m"
+              className="liquid-btn"
               style={{
                 minWidth: 120,
                 flex: "0 0 auto",
@@ -63,7 +70,7 @@ export function MacroStrip() {
               </Text>
               <Text variant="label-default-xs" onBackground={changeColor}>
                 {serie.change !== null
-                  ? `${serie.change > 0 ? "+" : ""}${serie.change.toFixed(2)}`
+                  ? `${serie.change > 0 ? "+" : ""}${serie.change.toFixed(2)}%`
                   : ""}
               </Text>
             </Column>

@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — components/news/SummaryHistoryModal.tsx
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 "use client";
 
 import { Column, Row, Text, IconButton, Badge } from "@once-ui-system/core";
@@ -69,6 +75,7 @@ export function SummaryHistoryModal({ isOpen, onClose, chatId }: SummaryHistoryM
       <Column
         radius="l"
         fillWidth
+        className="liquid-glass"
         style={{
           position: "relative",
           maxWidth: 520,

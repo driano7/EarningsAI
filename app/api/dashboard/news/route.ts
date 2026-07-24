@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — app/api/dashboard/news/route.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { getUserStocks, getUserEtfs, getUserCryptos } from "@/lib/kv";
 import { SP500 } from "@/lib/sp500";
@@ -39,8 +45,33 @@ export async function GET(req: NextRequest) {
   }
 
   if (source === "finnhub") {
-    const articles = await getFinnhubGeneralNews();
-    return NextResponse.json({ ok: true, articles, source: "finnhub" });
+    const [generalNews, stocks, etfs, cryptos] = await Promise.all([
+      getFinnhubGeneralNews("general", 5),
+      getUserStocks(chatId).catch(() => [] as string[]),
+      getUserEtfs(chatId).catch(() => [] as string[]),
+      getUserCryptos(chatId).catch(() => [] as string[]),
+    ]);
+
+    const allTickers = [...new Set([...stocks, ...etfs, ...cryptos])];
+    const favNews: Array<{ ticker: string; articles: Awaited<ReturnType<typeof getFinnhubCompanyNews>> }> = [];
+
+    for (const t of allTickers.slice(0, 10)) {
+      const articles = await getFinnhubCompanyNews(t, 2);
+      if (articles.length > 0) {
+        favNews.push({ ticker: t, articles });
+      }
+    }
+
+    const flatFavNews = favNews.flatMap(({ ticker, articles }) =>
+      articles.map((a) => ({ ...a, _ticker: ticker }))
+    );
+
+    return NextResponse.json({
+      ok: true,
+      general: generalNews,
+      favorites: flatFavNews,
+      source: "finnhub",
+    });
   }
 
   const articles = await getMarketNews();

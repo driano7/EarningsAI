@@ -5,6 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { kv } from "@vercel/kv";
 import { getPositions, addPosition, updatePosition, deletePosition } from "@/lib/kv-portfolio";
 import type { PortfolioPosition } from "@/lib/types";
 
@@ -18,7 +19,21 @@ export async function GET(req: NextRequest) {
   if (!chatId) {
     return NextResponse.json({ ok: false, error: "chatId required" }, { status: 400 });
   }
-  const positions = await getPositions(chatId);
+  let positions = await getPositions(chatId);
+
+  const seen = new Map<string, PortfolioPosition>();
+  for (const pos of positions) {
+    const key = `${pos.ticker}:${pos.type}:${pos.buyPrice}`;
+    if (!seen.has(key)) {
+      seen.set(key, pos);
+    }
+  }
+  positions = Array.from(seen.values());
+
+  if (positions.length !== (await getPositions(chatId)).length) {
+    await kv.set(`portfolio:${chatId}`, positions);
+  }
+
   return NextResponse.json({ ok: true, positions });
 }
 

@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — app/api/dashboard/watchlist/route.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { getAllUsers, getUserWatchlist, removeStock, removeEtf } from "@/lib/kv";
 import { SP500 } from "@/lib/sp500";

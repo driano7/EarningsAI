@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — lib/ai-analysis.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 const OR_BASE = "https://openrouter.ai/api/v1/chat/completions";
 const OR_KEY = process.env.OPENROUTER_API_KEY || "";
 const MODEL = "google/gemini-3.1-flash-lite";

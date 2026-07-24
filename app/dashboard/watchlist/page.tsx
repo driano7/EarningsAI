@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Column, Row, Heading, Text, Badge, Card, IconButton, Grid } from "@once-ui-system/core";
+import { Column, Row, Heading, Text, Badge, Card, IconButton, Grid, Skeleton } from "@once-ui-system/core";
 import { returns, annualizedVolatility, maxDrawdown, sharpeRatio } from "@/lib/gs-quant";
 import { formatPercent } from "@/lib/formatFinance";
-import { getChartLineColor, CHART_COLORS } from "@/lib/chartColors";
+import { getChartLineColor } from "@/lib/chartColors";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { ChartCard } from "@/components/charts/ChartCard";
 import { exportCsvDownload, exportXlsxDownload } from "@/lib/chart-utils";
 
 interface TickerData {
@@ -46,7 +45,7 @@ export default function WatchlistPage() {
       .then((data) => {
         if (data.ok) setTickers(data.tickers);
       })
-      .catch(() => setError("No se pudo cargar la watchlist. Verifica tu sesión."))
+      .catch(() => setError("No se pudo cargar la watchlist. Verifica tu sesion."))
       .finally(() => setLoading(false));
   }, []);
 
@@ -132,135 +131,6 @@ export default function WatchlistPage() {
         </Row>
       </Card>
 
-      {selectedTicker && selectedInfo && (
-        <Column gap="s">
-          <Row vertical="center" horizontal="between" fillWidth>
-            <Row gap="s" vertical="center">
-              <Badge textVariant="label-default-s" color="brand">{selectedTicker}</Badge>
-              <Text variant="body-default-m">{selectedInfo.name} — {selectedInfo.sector}</Text>
-            </Row>
-            <IconButton
-              icon="remove"
-              onClick={() => setSelectedTicker(null)}
-              size="s"
-              variant="tertiary"
-              tooltip="Cerrar"
-            />
-          </Row>
-
-          <Row gap="s">
-            {(["1w", "1m", "3m", "1y"] as Period[]).map((p) => (
-              <Badge
-                key={p}
-                textVariant="label-default-s"
-                color={period === p ? "brand" : "neutral"}
-                style={{ cursor: "pointer" }}
-                onClick={() => setPeriod(p)}
-              >
-                {p === "1w" ? "1 semana" : p === "1m" ? "1 mes" : p === "3m" ? "3 meses" : "1 año"}
-              </Badge>
-            ))}
-          </Row>
-
-          <ChartCard
-            title={`${selectedTicker} — Precio`}
-            subtitle={`Historial (${period})`}
-            filename={`${selectedTicker}-${period}`}
-            height={300}
-          >
-            {historyLoading ? (
-              <Text>Cargando...</Text>
-            ) : priceHistory.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={priceHistory}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--neutral-alpha-weak)" />
-                  <XAxis dataKey="date" tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 10 }} />
-                  <YAxis
-                    domain={["auto", "auto"]}
-                    tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 11 }}
-                    tickFormatter={(v: number) => `$${v.toFixed(2)}`}
-                  />
-                  <Tooltip
-                    contentStyle={{ background: "var(--neutral-alpha-weak)", border: "1px solid var(--neutral-alpha-medium)", borderRadius: 8 }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="close"
-                    stroke={getChartLineColor(
-                      priceHistory.length >= 2
-                        ? priceHistory[priceHistory.length - 1].close - priceHistory[0].close
-                        : null
-                    )}
-                    strokeWidth={2}
-                    dot={false}
-                    activeDot={{ r: 4, fill: "var(--cyan-400)" }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <Text variant="body-default-s" onBackground="neutral-weak">
-                Sin datos históricos disponibles
-              </Text>
-            )}
-    </ChartCard>
-
-    {analytics && (
-      <Card padding="l" radius="m" fillWidth>
-        <Column gap="m">
-          <Heading variant="heading-strong-m">Analítica</Heading>
-          <Grid columns="4" gap="m" l={{ columns: 2 }} s={{ columns: 2 }}>
-            <Column padding="16" background="surface" radius="m" border="neutral-alpha-medium" gap="xs">
-              <Text variant="label-default-xs" onBackground="neutral-weak">Rendimiento Total</Text>
-              <Text variant="label-strong-m" onBackground={analytics.totalReturn >= 0 ? "success-medium" : "danger-medium"}>
-                {formatPercent(analytics.totalReturn * 100)}
-              </Text>
-            </Column>
-            <Column padding="16" background="surface" radius="m" border="neutral-alpha-medium" gap="xs">
-              <Text variant="label-default-xs" onBackground="neutral-weak">Volatilidad (anual)</Text>
-              <Text variant="label-strong-m">
-                {analytics.annualizedVol !== null ? formatPercent(analytics.annualizedVol * 100) : "—"}
-              </Text>
-            </Column>
-            <Column padding="16" background="surface" radius="m" border="neutral-alpha-medium" gap="xs">
-              <Text variant="label-default-xs" onBackground="neutral-weak">Máx. Drawdown</Text>
-              <Text variant="label-strong-m" onBackground="danger-medium">
-                {formatPercent(-analytics.maxDrawdown * 100)}
-              </Text>
-            </Column>
-            <Column padding="16" background="surface" radius="m" border="neutral-alpha-medium" gap="xs">
-              <Text variant="label-default-xs" onBackground="neutral-weak">Sharpe Ratio</Text>
-              <Text variant="label-strong-m" onBackground={
-                analytics.sharpe !== null ? (analytics.sharpe >= 2 ? "success-medium" : analytics.sharpe >= 1 ? "brand-medium" : analytics.sharpe >= 0 ? "warning-medium" : "danger-medium") : "neutral-medium"
-              }>
-                {analytics.sharpe !== null ? analytics.sharpe.toFixed(2) : "—"}
-              </Text>
-            </Column>
-          </Grid>
-        </Column>
-      </Card>
-    )}
-
-    {priceHistory.length > 0 && (
-      <Row gap="s" padding="s">
-        <IconButton
-          icon="download"
-          onClick={() => exportCsvDownload(csvHeaders, csvRows, `${selectedTicker}-${period}.csv`)}
-          size="s"
-          variant="tertiary"
-          tooltip="CSV"
-        />
-        <IconButton
-          icon="download"
-          onClick={() => exportXlsxDownload(csvHeaders, csvRows, `${selectedTicker}-${period}.xlsx`)}
-          size="s"
-          variant="tertiary"
-          tooltip="XLSX"
-        />
-      </Row>
-    )}
-        </Column>
-      )}
-
       <Column gap="s">
         {filtered.map((ticker) => (
           <Row
@@ -299,6 +169,174 @@ export default function WatchlistPage() {
           </Text>
         )}
       </Column>
+
+      {selectedTicker && selectedInfo && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1500,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "16px",
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedTicker(null);
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "rgba(0,0,0,0.88)",
+            }}
+            onClick={() => setSelectedTicker(null)}
+          />
+
+          <Column
+            radius="l"
+            fillWidth
+            className="liquid-glass"
+            style={{
+              position: "relative",
+              maxWidth: 600,
+              maxHeight: "85vh",
+              background: "var(--neutral-background)",
+              border: "1px solid var(--neutral-alpha-medium)",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <Row
+              fillWidth
+              horizontal="between"
+              vertical="center"
+              padding="l"
+              style={{ borderBottom: "1px solid var(--neutral-alpha-weak)" }}
+            >
+              <Row gap="s" vertical="center">
+                <Badge textVariant="label-default-s" color="brand">{selectedTicker}</Badge>
+                <Text variant="body-default-m">{selectedInfo.name} — {selectedInfo.sector}</Text>
+              </Row>
+              <IconButton
+                icon="close"
+                onClick={() => setSelectedTicker(null)}
+                size="s"
+                variant="tertiary"
+              />
+            </Row>
+
+            <Column padding="l" gap="m" style={{ overflowY: "auto", flex: 1 }}>
+              <Row gap="s" wrap>
+                {(["1w", "1m", "3m", "1y"] as Period[]).map((p) => (
+                  <Badge
+                    key={p}
+                    textVariant="label-default-s"
+                    color={period === p ? "brand" : "neutral"}
+                    style={{ cursor: "pointer" }}
+                    onClick={() => setPeriod(p)}
+                  >
+                    {p === "1w" ? "1 semana" : p === "1m" ? "1 mes" : p === "3m" ? "3 meses" : "1 anio"}
+                  </Badge>
+                ))}
+              </Row>
+
+              {historyLoading ? (
+                <Skeleton shape="block" height="l" fillWidth radius="m" />
+              ) : priceHistory.length > 0 ? (
+                <div style={{ width: "100%", height: 300 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={priceHistory}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--neutral-alpha-weak)" />
+                      <XAxis dataKey="date" tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 10 }} />
+                      <YAxis
+                        domain={["auto", "auto"]}
+                        tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 11 }}
+                        tickFormatter={(v: number) => `$${v.toFixed(2)}`}
+                      />
+                      <Tooltip
+                        contentStyle={{ background: "var(--neutral-alpha-weak)", border: "1px solid var(--neutral-alpha-medium)", borderRadius: 8 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="close"
+                        stroke={getChartLineColor(
+                          priceHistory.length >= 2
+                            ? priceHistory[priceHistory.length - 1].close - priceHistory[0].close
+                            : null
+                        )}
+                        strokeWidth={2}
+                        dot={false}
+                        activeDot={{ r: 4, fill: "var(--cyan-400)" }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <Text variant="body-default-s" onBackground="neutral-weak">
+                  Sin datos historicos disponibles
+                </Text>
+              )}
+
+              {analytics && (
+                <Column gap="m">
+                  <Text variant="heading-strong-s">Analitica</Text>
+                  <Grid columns="4" gap="m" l={{ columns: 2 }} s={{ columns: 2 }}>
+                    <Column padding="12" background="surface" radius="m" border="neutral-alpha-medium" gap="xs">
+                      <Text variant="label-default-xs" onBackground="neutral-weak">Rendimiento Total</Text>
+                      <Text variant="label-strong-m" onBackground={analytics.totalReturn >= 0 ? "success-medium" : "danger-medium"}>
+                        {formatPercent(analytics.totalReturn * 100)}
+                      </Text>
+                    </Column>
+                    <Column padding="12" background="surface" radius="m" border="neutral-alpha-medium" gap="xs">
+                      <Text variant="label-default-xs" onBackground="neutral-weak">Volatilidad (anual)</Text>
+                      <Text variant="label-strong-m">
+                        {analytics.annualizedVol !== null ? formatPercent(analytics.annualizedVol * 100) : "—"}
+                      </Text>
+                    </Column>
+                    <Column padding="12" background="surface" radius="m" border="neutral-alpha-medium" gap="xs">
+                      <Text variant="label-default-xs" onBackground="neutral-weak">Max. Drawdown</Text>
+                      <Text variant="label-strong-m" onBackground="danger-medium">
+                        {formatPercent(-analytics.maxDrawdown * 100)}
+                      </Text>
+                    </Column>
+                    <Column padding="12" background="surface" radius="m" border="neutral-alpha-medium" gap="xs">
+                      <Text variant="label-default-xs" onBackground="neutral-weak">Sharpe Ratio</Text>
+                      <Text variant="label-strong-m" onBackground={
+                        analytics.sharpe !== null ? (analytics.sharpe >= 2 ? "success-medium" : analytics.sharpe >= 1 ? "brand-medium" : analytics.sharpe >= 0 ? "warning-medium" : "danger-medium") : "neutral-medium"
+                      }>
+                        {analytics.sharpe !== null ? analytics.sharpe.toFixed(2) : "—"}
+                      </Text>
+                    </Column>
+                  </Grid>
+                </Column>
+              )}
+
+              {priceHistory.length > 0 && (
+                <Row gap="s" paddingY="s">
+                  <IconButton
+                    icon="download"
+                    onClick={() => exportCsvDownload(csvHeaders, csvRows, `${selectedTicker}-${period}.csv`)}
+                    size="s"
+                    variant="tertiary"
+                    tooltip="CSV"
+                  />
+                  <IconButton
+                    icon="download"
+                    onClick={() => exportXlsxDownload(csvHeaders, csvRows, `${selectedTicker}-${period}.xlsx`)}
+                    size="s"
+                    variant="tertiary"
+                    tooltip="XLSX"
+                  />
+                </Row>
+              )}
+            </Column>
+          </Column>
+        </div>
+      )}
     </Column>
   );
 }

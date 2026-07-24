@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — lib/news.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 import { kv } from "@vercel/kv";
 import { checkAndConsumeRateLimit } from "./api-ratelimit";
 

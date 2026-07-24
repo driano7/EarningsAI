@@ -1,6 +1,7 @@
 /*
  * Quartly Bot — lib/formatFinance.ts
- * Utilidades de formateo financiero
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
  */
 
 export function formatCurrency(value: number, currency = "USD"): string {

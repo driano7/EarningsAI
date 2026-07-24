@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — hooks/useChatbot.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 "use client";
 
 import { useState, useCallback, useRef } from "react";

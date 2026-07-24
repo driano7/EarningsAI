@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — app/api/dashboard/cryptos/route.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { getUserCryptos } from "@/lib/kv";
 import { getCryptoQuote } from "@/lib/coingecko";

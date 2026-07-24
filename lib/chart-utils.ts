@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — lib/chart-utils.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 import { toPng } from "html-to-image";
 import * as XLSX from "xlsx";
 

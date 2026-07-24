@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — components/dashboard/PortfolioTable.tsx
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -140,6 +146,7 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
         radius="m"
         vertical="center"
         horizontal="between"
+        className="liquid-glass"
         style={{
           background: "rgba(255,255,255,0.05)",
           border: "1px solid rgba(255,255,255,0.1)",
@@ -172,6 +179,7 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
+            className="liquid-select"
             style={{
               padding: "8px 12px",
               borderRadius: 8,
@@ -194,6 +202,7 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
 
       <Flex
         fillWidth
+        className="glass-card"
         style={{
           overflowX: "auto",
           borderRadius: 12,

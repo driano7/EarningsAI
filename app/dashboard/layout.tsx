@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
@@ -37,8 +37,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [authed, setAuthed] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+
+  const toggleChat = useCallback(() => setChatOpen((p) => !p), []);
 
   useEffect(() => {
     const auth = localStorage.getItem("quartly_auth");
@@ -94,8 +97,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Column fillWidth padding="s" overflow="auto" style={{ maxHeight: "calc(100vh - 60px)" }}>
           {children}
         </Column>
-        <MobileDock />
-        <FloatingAssistant />
+        <MobileDock onChatToggle={toggleChat} chatOpen={chatOpen} />
+        <FloatingAssistant open={chatOpen} onToggle={toggleChat} />
       </Column>
     );
   }
@@ -106,6 +109,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         as="nav"
         padding="m"
         gap="s"
+        className="liquid-glass-sm"
         style={{
           minWidth: sidebarOpen ? 240 : 60,
           borderRight: "1px solid var(--neutral-alpha-weak)",
@@ -129,7 +133,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 onClick={handleLogout}
                 size="s"
                 variant="tertiary"
-                tooltip="Cerrar sesión"
+                tooltip="Cerrar sesion"
               />
             </Flex>
           )}

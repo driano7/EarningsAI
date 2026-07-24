@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — app/api/dashboard/ai/portfolio/route.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
 import { getPositions } from "@/lib/kv-portfolio";

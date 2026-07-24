@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — components/dashboard/FloatingAssistant.tsx
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 "use client";
 
 import { useState, useRef, useEffect } from "react";
@@ -12,8 +18,15 @@ const QUICK_ACTIONS = [
   { label: "Hype", message: "Qué acciones tienen más hype esta semana" },
 ];
 
-export function FloatingAssistant() {
-  const [open, setOpen] = useState(false);
+interface FloatingAssistantProps {
+  open?: boolean;
+  onToggle?: () => void;
+}
+
+export function FloatingAssistant({ open: externalOpen, onToggle }: FloatingAssistantProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = onToggle || setInternalOpen;
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const [chatId, setChatId] = useState("default");
@@ -44,53 +57,53 @@ export function FloatingAssistant() {
 
   return (
     <>
-      {/* ── FLOATING BUTTON ─────────────────────── */}
-      <motion.div
-        style={{
-          position: "fixed",
-          bottom: isMobile ? "calc(6.5rem + env(safe-area-inset-bottom))" : 24,
-          right: 20,
-          zIndex: 1000,
-        }}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-      >
-        <IconButton
-          icon="sparkles"
-          size="m"
-          variant="primary"
-          onClick={() => setOpen(!open)}
+      {!isMobile && (
+        <motion.div
           style={{
-            borderRadius: "50%",
-            width: 48,
-            height: 48,
-            boxShadow: "0 4px 20px var(--brand-alpha-medium)",
+            position: "fixed",
+            bottom: 24,
+            right: 20,
+            zIndex: 1000,
           }}
-        />
-        {!open && messages.length <= 1 && (
-          <Badge
-            background="danger-medium"
-            onBackground="danger-strong"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <IconButton
+            icon="sparkles"
+            size="m"
+            variant="primary"
+            onClick={() => setOpen(!open)}
             style={{
-              position: "absolute",
-              top: -4,
-              right: -4,
               borderRadius: "50%",
-              width: 18,
-              height: 18,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 10,
-              fontWeight: 700,
+              width: 48,
+              height: 48,
+              boxShadow: "0 4px 20px var(--brand-alpha-medium)",
             }}
-          >
-            1
-          </Badge>
-        )}
-      </motion.div>
+          />
+          {!open && messages.length <= 1 && (
+            <Badge
+              background="danger-medium"
+              onBackground="danger-strong"
+              style={{
+                position: "absolute",
+                top: -4,
+                right: -4,
+                borderRadius: "50%",
+                width: 18,
+                height: 18,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 10,
+                fontWeight: 700,
+              }}
+            >
+              1
+            </Badge>
+          )}
+        </motion.div>
+      )}
 
-      {/* ── CHAT PANEL ─────────────────────────── */}
       <AnimatePresence>
         {open && (
           <motion.div
@@ -98,26 +111,26 @@ export function FloatingAssistant() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: isMobile ? "100%" : 20, scale: isMobile ? 1 : 0.95 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
+            className="liquid-glass"
             style={{
               position: "fixed",
-              inset: isMobile ? 0 : undefined,
-              bottom: isMobile ? 0 : 80,
-              right: isMobile ? undefined : 16,
-              top: isMobile ? 0 : undefined,
-              left: isMobile ? undefined : undefined,
-              width: isMobile ? "100%" : 340,
-              maxHeight: isMobile ? "100vh" : "calc(100vh - 120px)",
+              inset: isMobile ? undefined : undefined,
+              bottom: isMobile ? "calc(5rem + env(safe-area-inset-bottom))" : 80,
+              right: isMobile ? 12 : 16,
+              top: isMobile ? undefined : undefined,
+              left: isMobile ? 12 : undefined,
+              width: isMobile ? "calc(100% - 24px)" : 340,
+              height: isMobile ? "50vh" : undefined,
+              maxHeight: isMobile ? "50vh" : "calc(100vh - 120px)",
               zIndex: isMobile ? 2000 : 999,
-              borderRadius: isMobile ? 0 : 14,
+              borderRadius: 14,
               overflow: "hidden",
-              border: isMobile ? "none" : "1px solid var(--neutral-alpha-medium)",
               background: "var(--neutral-background)",
-              boxShadow: isMobile ? "none" : "0 8px 32px rgba(0,0,0,0.5)",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
               display: "flex",
               flexDirection: "column",
             }}
           >
-            {/* Header */}
             <Row
               padding="s"
               paddingX="m"
@@ -125,8 +138,8 @@ export function FloatingAssistant() {
               horizontal="between"
               style={{
                 borderBottom: "1px solid var(--neutral-alpha-weak)",
-                paddingTop: isMobile ? "max(0.75rem, env(safe-area-inset-top))" : undefined,
-                background: "var(--neutral-alpha-weak)",
+                paddingTop: isMobile ? "max(0.5rem, env(safe-area-inset-top))" : undefined,
+                background: "var(--neutral-background)",
                 flexShrink: 0,
               }}
             >
@@ -139,7 +152,7 @@ export function FloatingAssistant() {
                 >
                   <Row gap="xs" vertical="center">
                     <Icon name="sparkles" size="xs" />
-                    <Text variant="label-default-xs">En línea</Text>
+                    <Text variant="label-default-xs">Online</Text>
                   </Row>
                 </Badge>
                 <Text variant="heading-strong-s">Quartly AI</Text>
@@ -161,7 +174,6 @@ export function FloatingAssistant() {
               </Row>
             </Row>
 
-            {/* Quick Actions */}
             <Row
               paddingX="s"
               paddingY="xs"
@@ -177,10 +189,11 @@ export function FloatingAssistant() {
                 <button
                   key={a.label}
                   onClick={() => sendMessage(a.message)}
+                  className="liquid-btn"
                   style={{
                     whiteSpace: "nowrap",
                     flexShrink: 0,
-                    padding: "5px 10px",
+                    padding: "4px 8px",
                     borderRadius: 6,
                     border: "1px solid var(--neutral-alpha-medium)",
                     background: "var(--neutral-alpha-weak)",
@@ -195,7 +208,6 @@ export function FloatingAssistant() {
               ))}
             </Row>
 
-            {/* Messages */}
             <Column
               padding="s"
               paddingX="m"
@@ -247,7 +259,6 @@ export function FloatingAssistant() {
               <div ref={scrollRef} />
             </Column>
 
-            {/* Input */}
             <Row
               padding="s"
               paddingX="m"
@@ -255,8 +266,8 @@ export function FloatingAssistant() {
               vertical="center"
               style={{
                 borderTop: "1px solid var(--neutral-alpha-weak)",
-                paddingBottom: isMobile ? "max(0.75rem, env(safe-area-inset-bottom))" : undefined,
-                background: "var(--neutral-alpha-weak)",
+                paddingBottom: isMobile ? "max(0.5rem, env(safe-area-inset-bottom))" : undefined,
+                background: "var(--neutral-background)",
                 flexShrink: 0,
               }}
             >
@@ -279,6 +290,7 @@ export function FloatingAssistant() {
                 variant="primary"
                 disabled={!input.trim() || isLoading}
                 onClick={handleSend}
+                className="liquid-btn"
               />
             </Row>
           </motion.div>

@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — app/dashboard/news/page.tsx
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -10,7 +16,7 @@ import type { NewsArticle } from "@/lib/news";
 import type { FinnhubNews } from "@/lib/finnhub";
 
 type TabType = "supernota" | "market" | "ticker" | "finnhub";
-type NewsItem = (NewsArticle | FinnhubNews) & { _source: string };
+type NewsItem = (NewsArticle | FinnhubNews) & { _source: string; _ticker?: string };
 
 interface SummaryEntry {
   date: string;
@@ -18,10 +24,16 @@ interface SummaryEntry {
   createdAt: number;
 }
 
+interface FinnhubData {
+  general: FinnhubNews[];
+  favorites: (FinnhubNews & { _ticker: string })[];
+}
+
 export default function NewsPage() {
   const [chatId, setChatId] = useState("");
   const [tab, setTab] = useState<TabType>("supernota");
   const [articles, setArticles] = useState<NewsItem[]>([]);
+  const [finnhubData, setFinnhubData] = useState<FinnhubData | null>(null);
   const [loading, setLoading] = useState(true);
   const [tickers, setTickers] = useState<string[]>([]);
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
@@ -74,7 +86,27 @@ export default function NewsPage() {
   useEffect(() => {
     if (!chatId || tab === "supernota") return;
     setLoading(true);
-    const params = new URLSearchParams({ chatId, source: tab === "finnhub" ? "finnhub" : "newsapi" });
+    setFinnhubData(null);
+    setArticles([]);
+
+    if (tab === "finnhub") {
+      const params = new URLSearchParams({ chatId, source: "finnhub" });
+      fetch(`/api/dashboard/news?${params}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.ok) {
+            setFinnhubData({
+              general: data.general || [],
+              favorites: data.favorites || [],
+            });
+          }
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+      return;
+    }
+
+    const params = new URLSearchParams({ chatId, source: "newsapi" });
     if (tab === "ticker" && selectedTicker) {
       const cleanTicker = selectedTicker.replace(/^[📈📊🪙]\s*/, "");
       params.set("ticker", cleanTicker);
@@ -125,6 +157,7 @@ export default function NewsPage() {
           <button
             key={t.key}
             onClick={() => { setTab(t.key); setSelectedTicker(null); }}
+            className="liquid-btn"
             style={{
               padding: "8px 16px",
               borderRadius: 8,
@@ -184,6 +217,7 @@ export default function NewsPage() {
                 <button
                   key={t}
                   onClick={() => setSelectedTicker(t)}
+                  className="liquid-btn"
                   style={{
                     padding: "6px 12px",
                     borderRadius: 6,
@@ -206,7 +240,64 @@ export default function NewsPage() {
         </Column>
       )}
 
-      {tab !== "supernota" && (
+      {tab === "finnhub" && (
+        loading ? (
+          <Column gap="m" fillWidth>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} shape="block" height="l" fillWidth radius="m" />
+            ))}
+          </Column>
+        ) : finnhubData ? (
+          <Column gap="l" fillWidth>
+            {finnhubData.general.length > 0 && (
+              <Column gap="m" fillWidth>
+                <Row gap="s" vertical="center">
+                  <Badge background="brand-alpha-weak" onBackground="brand-medium" paddingX="s" paddingY="xs">
+                    <Text variant="label-default-xs">TOP 5 DEL DIA</Text>
+                  </Badge>
+                </Row>
+                {finnhubData.general.map((article, i) => (
+                  <FinnhubNewsCard key={`gen-${article.id || i}`} article={article} />
+                ))}
+              </Column>
+            )}
+
+            {finnhubData.favorites.length > 0 && (
+              <Column gap="m" fillWidth>
+                <Row gap="s" vertical="center">
+                  <Badge background="accent-alpha-weak" onBackground="accent-medium" paddingX="s" paddingY="xs">
+                    <Text variant="label-default-xs">TUS FAVORITOS</Text>
+                  </Badge>
+                </Row>
+                {finnhubData.favorites.map((article, i) => (
+                  <Column key={`fav-${article.id || i}`} gap="xs">
+                    <Badge textVariant="label-default-xs" color="neutral" paddingX="xs">
+                      {article._ticker}
+                    </Badge>
+                    <FinnhubNewsCard article={article} />
+                  </Column>
+                ))}
+              </Column>
+            )}
+
+            {finnhubData.general.length === 0 && finnhubData.favorites.length === 0 && (
+              <Column fillWidth horizontal="center" padding="xl">
+                <Text variant="body-default-m" onBackground="neutral-weak">
+                  No hay noticias de Finnhub disponibles
+                </Text>
+              </Column>
+            )}
+          </Column>
+        ) : (
+          <Column fillWidth horizontal="center" padding="xl">
+            <Text variant="body-default-m" onBackground="neutral-weak">
+              No hay noticias disponibles
+            </Text>
+          </Column>
+        )
+      )}
+
+      {tab !== "supernota" && tab !== "finnhub" && (
         loading ? (
           <Column gap="m" fillWidth>
             {[1, 2, 3, 4, 5].map((i) => (

@@ -1,6 +1,8 @@
 /*
  * Quartly Bot — lib/resolve-ticker.ts
- * Resuelve el tipo de un ticker (stock, ETF, crypto) consultando
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ *
  * fuentes locales y APIs externas.
  */
 

@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — app/api/dashboard/macro/route.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 import { NextResponse } from "next/server";
 import { getMacroSnapshot } from "@/lib/macro";
 

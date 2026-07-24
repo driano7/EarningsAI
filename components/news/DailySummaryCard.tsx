@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — components/news/DailySummaryCard.tsx
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 "use client";
 
 import { Column, Row, Text, Badge, IconButton } from "@once-ui-system/core";
@@ -73,7 +79,7 @@ export function DailySummaryCard({ date, content, createdAt, isLatest }: DailySu
       radius="l"
       gap="s"
       fillWidth
-      className="glass-card"
+      className="liquid-glass-sm"
       style={{
         border: isLatest ? "1px solid var(--brand-alpha-medium)" : "1px solid var(--neutral-alpha-weak)",
       }}

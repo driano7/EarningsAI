@@ -94,6 +94,7 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
                 height: 36,
                 boxSizing: "border-box",
               }}
+              className="liquid-select"
             >
               <option value="all">Todos</option>
               <option value="buy">Compra</option>

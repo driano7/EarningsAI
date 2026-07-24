@@ -5,6 +5,7 @@ import { Column, Row, Heading, Text, Badge, Card, Button, Input, IconButton, Gri
 import { formatPercent } from "@/lib/formatFinance";
 import { getChartLineColor } from "@/lib/chartColors";
 import { TickerDetailChart } from "@/components/dashboard/TickerDetailChart";
+import { MacroStrip } from "@/components/dashboard/MacroStrip";
 
 function Sparkline({ data, color, width = 120, height = 28 }: { data: number[]; color?: string; width?: number; height?: number }) {
   if (!data || data.length < 2) return null;
@@ -28,6 +29,15 @@ interface EarningEvent {
   year: number;
   quarter: number;
   period: string;
+}
+
+interface CalendarEarning {
+  symbol: string;
+  date: string;
+  hour?: string;
+  estimate: number;
+  year: number;
+  quarter: number;
 }
 
 interface RecommendationTrend {
@@ -57,6 +67,7 @@ interface StockDetail {
   analystSignals: RecommendationTrend[];
   quote: QuoteData | null;
   sparkline: number[];
+  nextEarnings: CalendarEarning | null;
 }
 
 interface EtfDetail {
@@ -80,7 +91,7 @@ interface FavStock { ticker: string; name: string; sector: string; type: "stock"
 interface FavEtf { ticker: string; name: string; sector: string; type: "etf"; }
 interface FavCrypto { ticker: string; name: string; priceUsd: number | null; change24h: number | null; type: "crypto"; }
 type FavItem = FavStock | FavEtf | FavCrypto;
-type TabType = "cryptos" | "stocks" | "etfs";
+type TabType = "cryptos" | "stocks" | "etfs" | "macro";
 
 export default function FavoritesPage() {
   const [cryptos, setCryptos] = useState<FavCrypto[]>([]);
@@ -221,6 +232,7 @@ export default function FavoritesPage() {
     return (
       <Column fillWidth minHeight="100vh" horizontal="center" vertical="center" padding="l">
         <Column maxWidth="xs" gap="l" padding="xl" radius="m"
+          className="glass-card"
           style={{
             background: "var(--neutral-alpha-weak)",
             backdropFilter: "blur(12px)",
@@ -281,7 +293,7 @@ export default function FavoritesPage() {
       </Row>
 
       <Row gap="s" wrap>
-        {(["cryptos", "stocks", "etfs"] as TabType[]).map((t) => (
+        {(["cryptos", "stocks", "etfs", "macro"] as TabType[]).map((t) => (
           <Badge
             key={t}
             textVariant="label-default-s"
@@ -289,27 +301,36 @@ export default function FavoritesPage() {
             style={{ cursor: "pointer" }}
             onClick={() => setTab(t)}
           >
-            {t === "cryptos" ? `🪙 Cryptos (${cryptos.length})` : t === "stocks" ? `📊 Stocks (${stocks.length})` : `📦 ETFs (${etfs.length})`}
+            {t === "cryptos" ? `🪙 Cryptos (${cryptos.length})` : t === "stocks" ? `📊 Stocks (${stocks.length})` : t === "etfs" ? `📦 ETFs (${etfs.length})` : "📈 Macro"}
           </Badge>
         ))}
       </Row>
 
-      <Row gap="s" vertical="center" wrap>
-        <Input
-          id="add-ticker"
-          label="Agregar ticker"
-          placeholder={tab === "cryptos" ? "Ej: BTC, ETH, SOL" : "Ej: AAPL, MSFT"}
-          value={addTicker}
-          onChange={(e) => setAddTicker(e.target.value)}
-          onKeyDown={(e: React.KeyboardEvent) => { if (e.key === "Enter") handleAdd(); }}
-          style={{ minWidth: 200, flex: 1 }}
-        />
-        <Button onClick={handleAdd} disabled={!addTicker.trim() || adding}>
-          {adding ? "Agregando..." : "+ Agregar"}
-        </Button>
-      </Row>
+      {tab === "macro" ? (
+        <Column gap="m" fillWidth>
+          <Text variant="body-default-s" onBackground="neutral-weak">
+            Indicadores macroeconomicos de FRED. Haz clic en uno para ver la grafica historica.
+          </Text>
+          <MacroStrip />
+        </Column>
+      ) : (
+        <>
+          <Row gap="s" vertical="center" wrap>
+            <Input
+              id="add-ticker"
+              label="Agregar ticker"
+              placeholder={tab === "cryptos" ? "Ej: BTC, ETH, SOL" : "Ej: AAPL, MSFT"}
+              value={addTicker}
+              onChange={(e) => setAddTicker(e.target.value)}
+              onKeyDown={(e: React.KeyboardEvent) => { if (e.key === "Enter") handleAdd(); }}
+              style={{ minWidth: 200, flex: 1 }}
+            />
+            <Button onClick={handleAdd} disabled={!addTicker.trim() || adding}>
+              {adding ? "Agregando..." : "+ Agregar"}
+            </Button>
+          </Row>
 
-      {loading ? (
+          {loading ? (
         <Text>Cargando favoritos...</Text>
       ) : activeItems.length === 0 ? (
         <Card padding="l" radius="m" fillWidth>
@@ -466,6 +487,15 @@ export default function FavoritesPage() {
                       </Row>
                     )}
 
+                    {detail?.nextEarnings && (
+                      <Row gap="xs" vertical="center">
+                        <Text variant="label-default-xs" onBackground="neutral-weak">📅 Proximo reporte:</Text>
+                        <Text variant="label-default-xs" onBackground="brand-medium">
+                          {detail.nextEarnings.date}{detail.nextEarnings.hour ? ` (${detail.nextEarnings.hour === "amc" ? "After Close" : "Before Open"})` : ""}
+                        </Text>
+                      </Row>
+                    )}
+
                     {earningsLoading && (
                       <Text variant="label-default-xs" onBackground="neutral-weak">Cargando datos de reportes...</Text>
                     )}
@@ -476,6 +506,8 @@ export default function FavoritesPage() {
             );
           })}
         </Grid>
+      )}
+        </>
       )}
 
       <Text variant="label-default-xs" onBackground="neutral-weak">

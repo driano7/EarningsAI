@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — app/api/dashboard/macro/history/route.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
 import { checkAndConsumeRateLimit } from "@/lib/api-ratelimit";

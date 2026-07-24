@@ -202,10 +202,13 @@ export default function DashboardPage() {
                         </Pie>
                         <Tooltip
                           contentStyle={{
-                            background: "var(--neutral-alpha-weak)",
-                            border: "1px solid var(--neutral-alpha-medium)",
+                            background: "rgba(255,255,255,0.04)",
+                            backdropFilter: "blur(24px) saturate(1.6)",
+                            border: "1px solid rgba(255,255,255,0.1)",
                             borderRadius: 8,
-                            backdropFilter: "blur(12px)",
+                            boxShadow: "0 4px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)",
+                            padding: "0.5rem 0.75rem",
+                            color: "var(--neutral-on-background-strong)",
                           }}
                           formatter={(value) => [formatCurrency(Number(value)), "Valor"]}
                         />
@@ -254,11 +257,11 @@ export default function DashboardPage() {
             id: "monthly-bar",
             label: "Balance Mensual",
             content: (
-              <ChartCard title="Balance Mensual" subtitle="Ingresos vs Gastos (30d)" filename="monthly-balance" height={720}>
+              <ChartCard title="Balance Mensual" subtitle="Ingresos vs Gastos" filename="monthly-balance" height={400}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={[]}>
+                  <BarChart data={data.monthlyFinance.length > 0 ? data.monthlyFinance : [{ month: "Sin datos", income: 0, expense: 0 }]}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--neutral-alpha-weak)" />
-                    <XAxis dataKey="date" tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 12 }} />
+                    <XAxis dataKey="month" tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 12 }} />
                     <YAxis tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 12 }} />
                     <Tooltip
                       contentStyle={{
@@ -266,9 +269,10 @@ export default function DashboardPage() {
                         border: "1px solid var(--neutral-alpha-medium)",
                         borderRadius: 8,
                       }}
+                      formatter={(value) => [formatCurrency(Number(value)), ""]}
                     />
-                    <Bar dataKey="income" fill={CHART_COLORS.positive} radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="expense" fill={CHART_COLORS.negative} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="income" fill={CHART_COLORS.positive} name="Ingresos" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="expense" fill={CHART_COLORS.negative} name="Gastos" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </ChartCard>

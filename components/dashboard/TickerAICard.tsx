@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — components/dashboard/TickerAICard.tsx
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -61,6 +67,7 @@ export function TickerAICard({ ticker, chatId }: Props) {
       padding="m"
       radius="m"
       gap="s"
+      className="liquid-glass-sm"
       style={{
         background: "var(--neutral-alpha-weak)",
         border: "1px solid var(--neutral-alpha-weak)",

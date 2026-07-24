@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — components/news/NewsCard.tsx
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 "use client";
 
 import { Column, Row, Text, Button } from "@once-ui-system/core";
@@ -19,6 +25,7 @@ export function NewsCard({ article }: { article: NewsArticle }) {
     <Column
       fillWidth
       radius="m"
+      className="glass-card"
       style={{
         border: "1px solid var(--neutral-alpha-weak)",
         overflow: "hidden",

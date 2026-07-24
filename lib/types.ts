@@ -1,3 +1,9 @@
+/*
+ * Quartly Bot — lib/types.ts
+ * Copyright (c) Donovan Riaño. All rights reserved.
+ * Use of this code requires prior authorization from the owner.
+ */
+
 export interface CryptoQuote {
   ticker: string;
   name: string;
