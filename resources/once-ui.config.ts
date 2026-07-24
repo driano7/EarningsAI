@@ -1,24 +1,27 @@
-import { Geist, Geist_Mono } from "next/font/google";
+import { Lato, Fira_Code } from "next/font/google";
 
-const heading = Geist({
+const heading = Lato({
   variable: "--font-heading",
   subsets: ["latin"],
+  weight: ["400", "700", "900"],
   display: "swap",
 });
 
-const body = Geist({
+const body = Lato({
   variable: "--font-body",
   subsets: ["latin"],
+  weight: ["400", "700"],
   display: "swap",
 });
 
-const label = Geist({
+const label = Lato({
   variable: "--font-label",
   subsets: ["latin"],
+  weight: ["400", "700"],
   display: "swap",
 });
 
-const code = Geist_Mono({
+const code = Fira_Code({
   variable: "--font-code",
   subsets: ["latin"],
   display: "swap",

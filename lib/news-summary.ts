@@ -14,6 +14,7 @@ import { SP500 } from "./sp500";
 import { ETFS } from "./etfs";
 import { CUSTOM_TICKERS } from "./custom-tickers";
 import { getQuote } from "./finnhub";
+import { getYahooTickerNews, formatYahooNewsForPrompt, type YahooNewsItem } from "./yahoo-finance-news";
 
 export interface DailySummary {
   date: string;
@@ -83,12 +84,14 @@ function buildSupernotaPrompt(
   macros: MacroSerie[],
   marketNews: NewsArticle[],
   tickerNews: Array<{ ticker: string; articles: NewsArticle[] }>,
+  yahooNews: YahooNewsItem[],
   prices: Array<{ ticker: string; current: number; change: number | null; prevClose: number | null }>,
   allTickers: string[]
 ): string {
   const macroText = formatMacroForPrompt(macros);
   const marketText = formatNewsForPrompt(marketNews);
   const tickerText = formatTickerNewsForPrompt(tickerNews);
+  const yahooText = formatYahooNewsForPrompt(yahooNews);
   const priceText = formatPricesForPrompt(prices);
   const tickerList = allTickers.join(", ");
 
@@ -104,11 +107,14 @@ ${priceText}
 INDICADORES MACRO (FRED):
 ${macroText}
 
-NOTICIAS DE MERCADO (NewsAPI + Finnhub):
+NOTICIAS GENERALES DE MERCADO (NewsAPI + Finnhub):
 ${marketText}
 
-NOTICIAS DE TICKERS DEL PORTAFOLIO:
+NOTICIAS DE TICKERS DEL PORTAFOLIO (NewsAPI):
 ${tickerText}
+
+NOTICIAS ESPECIFICAS DE TUS ACCIONES (Yahoo Finance):
+${yahooText}
 
 INSTRUCCIONES — FORMATO "SUPERNOTA" (MAXIMO 3000 PALABRAS):
 1. Escribe en ESPANOL, tono directo y profesional.
@@ -116,7 +122,7 @@ INSTRUCCIONES — FORMATO "SUPERNOTA" (MAXIMO 3000 PALABRAS):
 3. PORTAFOLIO ACTIVO: resumen de movimiento de los tickers mas relevantes con precio actual, % y direccion. Alertar tickers con movimiento superior a +/-3%.
 4. MACRO CAVA: analiza VIX, correlacion, M2, bono 10 anos, oro, Bitcoin como indicadores. Indica si es dia de escalar o proteger.
 5. SENALES DE ENTRADA: alertar trampas tecnicas o correcciones >=10% como ventanas de entrada.
-6. CATALIZADORES: earnings, guidance, upgrades, contratos HBM/NAND, hitos relevantes.
+6. CATALIZADORES: earnings, guidance, upgrades, contratos HBM/NAND, hitos relevantes. Usa las noticias de Yahoo Finance para contexto especifico de cada ticker.
 7. CIERRE: semaforo macro — verde (escalar), amarillo (neutral), rojo (proteger). Justifica en 1 linea.
 8. Usa emojis moderadamente para secciones.
 9. NO uses markdown asterisks para negrita. Usa texto plano.
@@ -156,10 +162,11 @@ export async function generateDailyNewsSummary(chatId: string): Promise<string> 
   const { stocks, etfs } = await getUserWatchlist(chatId);
   const allTickers = [...stocks, ...etfs];
 
-  const [marketNews, macros, prices] = await Promise.all([
+  const [marketNews, macros, prices, yahooNews] = await Promise.all([
     getMarketNews(8),
     getMacroSnapshot(),
     fetchTickerPrices(allTickers),
+    getYahooTickerNews(stocks.slice(0, 10), 2),
   ]);
 
   const tickerNews: Array<{ ticker: string; articles: NewsArticle[] }> = [];
@@ -177,7 +184,7 @@ export async function generateDailyNewsSummary(chatId: string): Promise<string> 
   const { allowed: aiAllowed } = await checkAndConsumeQuota(1);
 
   if (aiAllowed) {
-    const summary = await generateAISupernota(today, macros, marketNews, tickerNews, prices, allTickers);
+    const summary = await generateAISupernota(today, macros, marketNews, tickerNews, yahooNews, prices, allTickers);
     if (summary) {
       await saveSummary(chatId, today, summary);
       return summary;
@@ -237,13 +244,14 @@ async function generateAISupernota(
   macros: MacroSerie[],
   marketNews: NewsArticle[],
   tickerNews: Array<{ ticker: string; articles: NewsArticle[] }>,
+  yahooNews: YahooNewsItem[],
   prices: Array<{ ticker: string; current: number; change: number | null; prevClose: number | null }>,
   allTickers: string[]
 ): Promise<string | null> {
   const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY || "";
   if (!OPENROUTER_KEY) return null;
 
-  const prompt = buildSupernotaPrompt(today, macros, marketNews, tickerNews, prices, allTickers);
+  const prompt = buildSupernotaPrompt(today, macros, marketNews, tickerNews, yahooNews, prices, allTickers);
 
   try {
     const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
