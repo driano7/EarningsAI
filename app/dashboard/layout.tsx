@@ -20,6 +20,7 @@ const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: "dashboard" },
   { label: "Favoritos", href: "/dashboard/favorites", icon: "bolt" },
   { label: "Portfolio", href: "/dashboard/portfolio", icon: "portfolio" },
+  { label: "Analisis", href: "/dashboard/portfolio-analytics", icon: "presentationChartLine" },
   { label: "Gastos", href: "/dashboard/transactions", icon: "transactions" },
   { label: "Finanzas", href: "/dashboard/finance", icon: "finance" },
   { label: "Calendario", href: "/dashboard/calendar", icon: "calendar" },

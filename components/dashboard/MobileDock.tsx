@@ -21,7 +21,7 @@ interface DockItem {
 const dockItems: DockItem[] = [
   { href: "/dashboard", icon: "dashboard", label: "Inicio" },
   { href: "/dashboard/favorites", icon: "bolt", label: "Favoritos" },
-  { href: "/dashboard/watchlist", icon: "watchlist", label: "Watchlist" },
+  { href: "/dashboard/portfolio-analytics", icon: "presentationChartLine", label: "Analisis" },
   { href: "/dashboard/portfolio", icon: "portfolio", label: "Portfolio" },
   { href: "/dashboard/news", icon: "globeAlt", label: "Noticias" },
 ];
