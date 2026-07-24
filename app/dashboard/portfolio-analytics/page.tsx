@@ -14,16 +14,23 @@ import { getRandomBarColor, CHART_GLASS_STYLE } from "@/lib/chartColors";
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  CandlestickChart, Candlestick,
 } from "recharts";
 import { exportCsvDownload, exportXlsxDownload } from "@/lib/chart-utils";
 
 const PERIODS = [
+  { label: "1D", value: "1d" },
   { label: "1M", value: "1m" },
-  { label: "3M", value: "3m" },
   { label: "6M", value: "6m" },
   { label: "1A", value: "1y" },
-  { label: "Todo", value: "all" },
+  { label: "3A", value: "3y" },
 ];
+
+const CHART_TYPES = [
+  { label: "Linea", value: "line" },
+  { label: "Area", value: "area" },
+  { label: "Velas", value: "candlestick" },
+] as const;
 
 const MOVEMENT_TYPES = [
   { label: "Compra", value: "buy", color: "success" },
@@ -43,6 +50,7 @@ export default function PortfolioAnalyticsPage() {
   } = usePortfolioHistory();
 
   const [showForm, setShowForm] = useState(false);
+  const [chartType, setChartType] = useState<"line" | "area" | "candlestick">("line");
   const [form, setForm] = useState({
     type: "buy" as string,
     ticker: "",
@@ -85,6 +93,22 @@ export default function PortfolioAnalyticsPage() {
       Crypto: s.cryptoValue,
     })),
   [snapshots]);
+
+  const candlestickData = useMemo(() => {
+    // Simulate OHLC from portfolio value data
+    return lineData.map((d, i, arr) => {
+      const prev = arr[i - 1]?.value ?? d.value;
+      const change = d.value - prev;
+      const volatility = Math.abs(change) * 0.1 + 1;
+      return {
+        month: d.month,
+        open: prev,
+        high: Math.max(prev, d.value) + volatility,
+        low: Math.min(prev, d.value) - volatility,
+        close: d.value,
+      };
+    });
+  }, [lineData]);
 
   const pieData = useMemo(() => {
     if (!summary) return [];
@@ -284,32 +308,89 @@ export default function PortfolioAnalyticsPage() {
       {/* ── Charts ── */}
       <div ref={chartRef}>
         <Grid columns="2" gap="m" l={{ columns: 1 }}>
-          {/* Line Chart - Portfolio Value */}
+          {/* Line/Area/Candlestick Chart - Portfolio Value */}
           <Card padding="m" radius="m" fillWidth>
             <Column gap="m">
               <Row vertical="center" horizontal="between">
                 <Heading variant="heading-strong-s">Valor del Portafolio</Heading>
                 <Row gap="xs">
+                  <Row gap="xs">
+                    {CHART_TYPES.map((ct) => (
+                      <button
+                        key={ct.value}
+                        onClick={() => setChartType(ct.value as any)}
+                        className={chartType === ct.value ? "liquid-btn" : ""}
+                        style={{
+                          padding: "6px 12px",
+                          borderRadius: "0.5rem",
+                          border: chartType === ct.value ? "1px solid var(--brand-medium)" : "1px solid var(--neutral-alpha-medium)",
+                          background: chartType === ct.value ? "var(--brand-alpha-weak)" : "transparent",
+                          color: chartType === ct.value ? "var(--brand-on-background-strong)" : "var(--neutral-on-background-weak)",
+                          cursor: "pointer",
+                          fontSize: "0.7rem",
+                          fontWeight: 600,
+                          transition: "all 0.2s ease",
+                        }}
+                      >
+                        {ct.label}
+                      </button>
+                    ))}
+                  </Row>
                   <IconButton icon="download" size="xs" onClick={handleExportPng} tooltip="Exportar PNG" />
                 </Row>
               </Row>
               <div style={CHART_GLASS_STYLE}>
                 <ResponsiveContainer width="100%" height={280}>
-                  <LineChart data={lineData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--neutral-alpha-medium)" />
-                    <XAxis dataKey="month" tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 11 }} />
-                    <YAxis tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 11 }} />
-                    <Tooltip
-                      contentStyle={{
-                        background: "rgba(255,255,255,0.04)",
-                        backdropFilter: "blur(24px)",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        borderRadius: "0.75rem",
-                        color: "var(--neutral-on-background-strong)",
-                      }}
-                    />
-                    <Line type="monotone" dataKey="value" stroke="#06b6d4" strokeWidth={2} dot={{ r: 4 }} />
-                  </LineChart>
+                  {chartType === "candlestick" ? (
+                    <CandlestickChart data={candlestickData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--neutral-alpha-medium)" />
+                      <XAxis dataKey="month" tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 11 }} />
+                      <YAxis tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 11 }} />
+                      <Tooltip
+                        contentStyle={{
+                          background: "rgba(255,255,255,0.04)",
+                          backdropFilter: "blur(24px)",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          borderRadius: "0.75rem",
+                          color: "var(--neutral-on-background-strong)",
+                        }}
+                      />
+                      <Candlestick dataKey={{ open: "open", high: "high", low: "low", close: "close" }} />
+                    </CandlestickChart>
+                  ) : chartType === "area" ? (
+                    <LineChart data={lineData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--neutral-alpha-medium)" />
+                      <XAxis dataKey="month" tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 11 }} />
+                      <YAxis tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 11 }} />
+                      <Tooltip
+                        contentStyle={{
+                          background: "rgba(255,255,255,0.04)",
+                          backdropFilter: "blur(24px)",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          borderRadius: "0.75rem",
+                          color: "var(--neutral-on-background-strong)",
+                        }}
+                      />
+                      <Line type="monotone" dataKey="value" stroke="#06b6d4" strokeWidth={2} dot={false} />
+                      <Area type="monotone" dataKey="value" stroke="#06b6d4" fill="var(--brand-alpha-weak)" fillOpacity={0.3} />
+                    </LineChart>
+                  ) : (
+                    <LineChart data={lineData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--neutral-alpha-medium)" />
+                      <XAxis dataKey="month" tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 11 }} />
+                      <YAxis tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 11 }} />
+                      <Tooltip
+                        contentStyle={{
+                          background: "rgba(255,255,255,0.04)",
+                          backdropFilter: "blur(24px)",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          borderRadius: "0.75rem",
+                          color: "var(--neutral-on-background-strong)",
+                        }}
+                      />
+                      <Line type="monotone" dataKey="value" stroke="#06b6d4" strokeWidth={2} dot={{ r: 4 }} />
+                    </LineChart>
+                  )}
                 </ResponsiveContainer>
               </div>
             </Column>
