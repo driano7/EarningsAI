@@ -287,6 +287,62 @@ export default function PortfolioAnalyticsPage() {
         </Grid>
       )}
 
+      {/* ── Controls: Period & Chart Type ── */}
+      <Card padding="m" radius="m" fillWidth className="liquid-glass-sm">
+        <Row gap="l" wrap>
+          <Column gap="xs">
+            <Text onBackground="neutral-weak">Temporalidad</Text>
+            <Row gap="xs" style={{ flexWrap: "wrap" }}>
+              {PERIODS.map((p) => (
+                <button
+                  key={p.value}
+                  className={period === p.value ? "liquid-btn" : ""}
+                  onClick={() => setPeriod(p.value)}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: "0.5rem",
+                    border: period === p.value ? "1px solid var(--brand-medium)" : "1px solid var(--neutral-alpha-medium)",
+                    background: period === p.value ? "var(--brand-alpha-weak)" : "transparent",
+                    color: period === p.value ? "var(--brand-on-background-strong)" : "var(--neutral-on-background-weak)",
+                    cursor: "pointer",
+                    fontSize: "0.7rem",
+                    fontWeight: 600,
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </Row>
+          </Column>
+          <Column gap="xs">
+            <Text variant="label-default-xs" onBackground="neutral-weak">Tipo de Grafica</Text>
+            <Row gap="xs" style={{ flexWrap: "wrap" }}>
+              {CHART_TYPES.map((ct) => (
+                <button
+                  key={ct.value}
+                  onClick={() => setChartType(ct.value as any)}
+                  className={chartType === ct.value ? "liquid-btn" : ""}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: "0.5rem",
+                    border: chartType === ct.value ? "1px solid var(--brand-medium)" : "1px solid var(--neutral-alpha-medium)",
+                    background: chartType === ct.value ? "var(--brand-alpha-weak)" : "transparent",
+                    color: chartType === ct.value ? "var(--brand-on-background-strong)" : "var(--neutral-on-background-weak)",
+                    cursor: "pointer",
+                    fontSize: "0.7rem",
+                    fontWeight: 600,
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  {ct.label}
+                </button>
+              ))}
+            </Row>
+          </Column>
+        </Row>
+      </Card>
+
       {/* ── Charts ── */}
       <div ref={chartRef}>
         <Grid columns="2" gap="m" l={{ columns: 1 }}>
@@ -295,31 +351,7 @@ export default function PortfolioAnalyticsPage() {
             <Column gap="m">
               <Row vertical="center" horizontal="between">
                 <Heading variant="heading-strong-s">Valor del Portafolio</Heading>
-                <Row gap="xs">
-                  <Row gap="xs">
-                    {CHART_TYPES.map((ct) => (
-                      <button
-                        key={ct.value}
-                        onClick={() => setChartType(ct.value as any)}
-                        className={chartType === ct.value ? "liquid-btn" : ""}
-                        style={{
-                          padding: "6px 12px",
-                          borderRadius: "0.5rem",
-                          border: chartType === ct.value ? "1px solid var(--brand-medium)" : "1px solid var(--neutral-alpha-medium)",
-                          background: chartType === ct.value ? "var(--brand-alpha-weak)" : "transparent",
-                          color: chartType === ct.value ? "var(--brand-on-background-strong)" : "var(--neutral-on-background-weak)",
-                          cursor: "pointer",
-                          fontSize: "0.7rem",
-                          fontWeight: 600,
-                          transition: "all 0.2s ease",
-                        }}
-                      >
-                        {ct.label}
-                      </button>
-                    ))}
-                  </Row>
-                  <IconButton icon="download" size="xs" onClick={handleExportPng} tooltip="Exportar PNG" />
-                </Row>
+                <IconButton icon="download" size="xs" onClick={handleExportPng} tooltip="Exportar PNG" />
               </Row>
               <div style={CHART_GLASS_STYLE}>
                 <ResponsiveContainer width="100%" height={280}>
