@@ -141,6 +141,7 @@ export function MacroChart({ seriesId, label, unit, onClose }: Props) {
           </Row>
           <Row gap="s" vertical="center">
             <Select
+              id="macro-period"
               options={PERIODS}
               value={period}
               onSelect={setPeriod}
@@ -148,6 +149,7 @@ export function MacroChart({ seriesId, label, unit, onClose }: Props) {
               style={{ width: 80 }}
             />
             <Select
+              id="macro-chart-type"
               options={CHART_TYPES}
               value={chartType}
               onSelect={setChartType}
