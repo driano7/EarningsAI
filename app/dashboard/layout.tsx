@@ -14,6 +14,7 @@ import {
 } from "@once-ui-system/core";
 import type { IconName } from "@/resources/icons";
 import { FloatingAssistant } from "@/components/dashboard/FloatingAssistant";
+import { MobileDock } from "@/components/dashboard/MobileDock";
 
 interface NavItem {
   label: string;
@@ -34,7 +35,8 @@ const navItems: NavItem[] = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [authed, setAuthed] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -48,12 +50,55 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [router]);
 
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
+
   function handleLogout() {
     localStorage.removeItem("quartly_auth");
     router.push("/");
   }
 
   if (!authed) return null;
+
+  if (isMobile) {
+    return (
+      <Column fillWidth minHeight="100vh">
+        <Row
+          padding="m"
+          vertical="center"
+          horizontal="between"
+          style={{ borderBottom: "1px solid var(--neutral-alpha-weak)" }}
+        >
+          <Flex horizontal="center" vertical="center" gap="s">
+            <Icon name="rocket" size="s" />
+            <Text variant="heading-default-s">Quartly</Text>
+          </Flex>
+          <Row gap="s" vertical="center">
+            <ThemeSwitcher />
+            <IconButton
+              icon="logout"
+              onClick={handleLogout}
+              size="s"
+              variant="tertiary"
+            />
+          </Row>
+        </Row>
+        <Column fillWidth padding="s" overflow="auto" style={{ maxHeight: "calc(100vh - 60px)" }}>
+          {children}
+        </Column>
+        <MobileDock />
+        <FloatingAssistant />
+      </Column>
+    );
+  }
 
   return (
     <Row fillWidth minHeight="100vh">
@@ -77,7 +122,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             variant="tertiary"
           />
           {sidebarOpen && (
-              <Flex fillWidth horizontal="between" vertical="center">
+            <Flex fillWidth horizontal="between" vertical="center">
               <Text variant="heading-default-m" marginLeft="s">⚡️📈 Quartly</Text>
               <IconButton
                 icon="logout"
@@ -92,33 +137,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
-          <Link key={item.href} href={item.href} style={{ textDecoration: "none" }}>
-            <Row
-              vertical="center"
-              gap="s"
-              padding="xs"
-              radius="s"
-              fillWidth
-              style={{
-                cursor: "pointer",
-                background: isActive ? "var(--brand-alpha-weak)" : "transparent",
-                color: isActive ? "var(--brand-on-background-strong)" : "var(--neutral-on-background-weak)",
-                transition: "all 0.2s ease",
-              }}
-              onMouseEnter={(e: React.MouseEvent<HTMLDivElement>) => {
-                if (!isActive) e.currentTarget.style.background = "var(--neutral-alpha-weak)";
-              }}
-              onMouseLeave={(e: React.MouseEvent<HTMLDivElement>) => {
-                if (!isActive) e.currentTarget.style.background = "transparent";
-              }}
-            >
-              <Icon name={item.icon} size="s" />
-              {sidebarOpen && <Text variant="body-default-s">{item.label}</Text>}
-            </Row>
-          </Link>
+            <Link key={item.href} href={item.href} style={{ textDecoration: "none" }}>
+              <Row
+                vertical="center"
+                gap="s"
+                padding="xs"
+                radius="s"
+                fillWidth
+                style={{
+                  cursor: "pointer",
+                  background: isActive ? "var(--brand-alpha-weak)" : "transparent",
+                  color: isActive ? "var(--brand-on-background-strong)" : "var(--neutral-on-background-weak)",
+                  transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e: React.MouseEvent<HTMLDivElement>) => {
+                  if (!isActive) e.currentTarget.style.background = "var(--neutral-alpha-weak)";
+                }}
+                onMouseLeave={(e: React.MouseEvent<HTMLDivElement>) => {
+                  if (!isActive) e.currentTarget.style.background = "transparent";
+                }}
+              >
+                <Icon name={item.icon} size="s" />
+                {sidebarOpen && <Text variant="body-default-s">{item.label}</Text>}
+              </Row>
+            </Link>
           );
         })}
       </Column>
+
       <Column fillWidth>
         <Row
           padding="m"

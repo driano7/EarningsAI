@@ -17,6 +17,14 @@ export function FloatingAssistant() {
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const [chatId, setChatId] = useState("default");
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   useEffect(() => {
     setChatId(localStorage.getItem("quartly_chatId") || "default");
@@ -40,7 +48,7 @@ export function FloatingAssistant() {
       <motion.div
         style={{
           position: "fixed",
-          bottom: 24,
+          bottom: isMobile ? "calc(6rem + env(safe-area-inset-bottom))" : 24,
           right: 24,
           zIndex: 1000,
         }}
@@ -86,22 +94,25 @@ export function FloatingAssistant() {
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            initial={{ opacity: 0, y: isMobile ? "100%" : 20, scale: isMobile ? 1 : 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
+            exit={{ opacity: 0, y: isMobile ? "100%" : 20, scale: isMobile ? 1 : 0.95 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
             style={{
               position: "fixed",
-              bottom: 92,
-              right: 24,
-              width: 380,
-              maxHeight: "calc(100vh - 140px)",
-              zIndex: 999,
-              borderRadius: 16,
+              inset: isMobile ? 0 : undefined,
+              bottom: isMobile ? 0 : 92,
+              right: isMobile ? undefined : 24,
+              top: isMobile ? 0 : undefined,
+              left: isMobile ? undefined : undefined,
+              width: isMobile ? "100%" : 380,
+              maxHeight: isMobile ? "100vh" : "calc(100vh - 140px)",
+              zIndex: isMobile ? 2000 : 999,
+              borderRadius: isMobile ? 0 : 16,
               overflow: "hidden",
-              border: "1px solid var(--neutral-alpha-medium)",
+              border: isMobile ? "none" : "1px solid var(--neutral-alpha-medium)",
               background: "var(--neutral-background)",
-              boxShadow: "0 8px 40px rgba(0,0,0,0.4)",
+              boxShadow: isMobile ? "none" : "0 8px 40px rgba(0,0,0,0.4)",
               display: "flex",
               flexDirection: "column",
             }}
@@ -111,9 +122,18 @@ export function FloatingAssistant() {
               padding="m"
               vertical="center"
               horizontal="between"
-              style={{ borderBottom: "1px solid var(--neutral-alpha-weak)" }}
+              style={{
+                borderBottom: "1px solid var(--neutral-alpha-weak)",
+                paddingTop: isMobile ? "max(1rem, env(safe-area-inset-top))" : undefined,
+              }}
             >
               <Row gap="s" vertical="center">
+                <IconButton
+                  icon="arrowLeft"
+                  size="s"
+                  variant="tertiary"
+                  onClick={() => setOpen(false)}
+                />
                 <Badge
                   background="success-alpha-weak"
                   onBackground="success-strong"
@@ -169,7 +189,7 @@ export function FloatingAssistant() {
             <Column
               padding="m"
               gap="m"
-              style={{ overflowY: "auto", flex: 1, minHeight: 200, maxHeight: "calc(100vh - 320px)" }}
+              style={{ overflowY: "auto", flex: 1, minHeight: 0 }}
             >
               {messages.map((msg) => (
                 <Row
@@ -221,7 +241,10 @@ export function FloatingAssistant() {
               padding="m"
               gap="s"
               vertical="center"
-              style={{ borderTop: "1px solid var(--neutral-alpha-weak)" }}
+              style={{
+                borderTop: "1px solid var(--neutral-alpha-weak)",
+                paddingBottom: isMobile ? "max(1rem, env(safe-area-inset-bottom))" : undefined,
+              }}
             >
               <Input
                 id="floating-chat-input"

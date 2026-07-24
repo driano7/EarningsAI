@@ -1,6 +1,6 @@
 const OR_BASE = "https://openrouter.ai/api/v1/chat/completions";
 const OR_KEY = process.env.OPENROUTER_API_KEY || "";
-const MODEL = "google/gemini-flash-1.5";
+const MODEL = "google/gemini-3.1-flash-lite";
 
 export interface TickerAnalysis {
   ticker: string;

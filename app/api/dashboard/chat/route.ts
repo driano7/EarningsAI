@@ -219,7 +219,7 @@ ${userContext}`;
         Authorization: `Bearer ${process.env.OPENROUTER_API_KEY || ""}`,
       },
       body: JSON.stringify({
-        model: "google/gemini-flash-1.5",
+        model: "google/gemini-3.1-flash-lite",
         messages: [
           { role: "system", content: systemPrompt },
           ...(history?.slice(-6) ?? []).map((m) => ({ role: m.role, content: m.content })),
@@ -231,7 +231,9 @@ ${userContext}`;
     });
 
     if (!orRes.ok) {
-      return NextResponse.json({ reply: "Error al contactar el asistente AI." });
+      const errBody = await orRes.text().catch(() => "unknown");
+      console.error("OpenRouter error:", orRes.status, errBody);
+      return NextResponse.json({ reply: "Error al contactar el asistente AI. Intenta de nuevo." });
     }
 
     const orData = (await orRes.json()) as { choices?: Array<{ message: { content: string } }> };
