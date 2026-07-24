@@ -7,7 +7,7 @@
 export const env = {
   TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN || "",
   FINNHUB_API_KEY: process.env.FINNHUB_API_KEY || "",
-  TWELVEDATA_API_KEY: process.env.TWELVEDATA_API_KEY || "",
+  TWELVEDATA_API_KEY: process.env.TWELVE || "",
   OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || "",
   KV_REST_API_URL: process.env.KV_REST_API_URL || "",
   KV_REST_API_TOKEN: process.env.KV_REST_API_TOKEN || "",

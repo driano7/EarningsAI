@@ -5,7 +5,7 @@
  */
 
 const BASE = "https://api.twelvedata.com";
-const KEY = process.env.TWELVEDATA_API_KEY || "";
+const KEY = process.env.TWELVE || "";
 
 export function isTwelveDataEnabled(): boolean {
   return KEY.length > 0;
