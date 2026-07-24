@@ -25,6 +25,7 @@
     "sass": "^1.100.0",
     "sharp": "^0.34.5",
     "vercel": "^34.0.0",
+    "web-push": "^4.0.0",
     "xlsx": "^0.18.5",
     "yahoo-finance2": "^3.14.1"
   },
@@ -32,6 +33,7 @@
     "@types/node": "^20.11.0",
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
+    "@types/web-push": "^3.6.0",
     "@vercel/node": "^3.0.0",
     "typescript": "^5.3.3"
   }

@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { Card, Column, Row, Text, IconButton } from "@once-ui-system/core";
 import { downloadChartPng } from "@/lib/chart-utils";
+import { CHART_GLASS_STYLE } from "@/lib/chartColors";
 
 interface ChartCardProps {
   title: string;
@@ -16,7 +17,7 @@ export function ChartCard({ title, subtitle, children, filename = "chart", heigh
   const chartRef = useRef<HTMLDivElement | null>(null);
 
   return (
-    <Card padding="m" radius="m" className="glass-card" fillWidth>
+    <Card padding="m" radius="m" fillWidth style={CHART_GLASS_STYLE}>
       <Column gap="m">
         <Row vertical="center" horizontal="between" fillWidth>
           <Column gap="xs">

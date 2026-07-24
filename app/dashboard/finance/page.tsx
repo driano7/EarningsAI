@@ -7,7 +7,7 @@ import {
 } from "recharts";
 import { ChartCard } from "@/components/charts/ChartCard";
 import { exportCsvDownload, exportXlsxDownload } from "@/lib/chart-utils";
-import { CHART_COLORS, CATEGORY_PALETTE } from "@/lib/chartColors";
+import { CHART_COLORS, CATEGORY_PALETTE, getRandomBarColor, CHART_GLASS_STYLE } from "@/lib/chartColors";
 
 interface FinanceData {
   totalIngresos: number;
@@ -152,28 +152,42 @@ export default function FinancePage() {
 
       <Grid columns="1" gap="m">
         <ChartCard title="Ingresos vs Gastos" subtitle="Por mes" filename="ingresos-gastos" height={720}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={monthlyData.length > 0 ? monthlyData : [{ month: "Sin datos", income: 0, expense: 0, invest: 0 }]}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--neutral-alpha-weak)" />
-              <XAxis dataKey="month" tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 12 }} />
-              <YAxis tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 12 }} />
-              <Tooltip
-                contentStyle={{
-                  background: "rgba(255,255,255,0.04)",
-                  backdropFilter: "blur(24px) saturate(1.6)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  borderRadius: 8,
-                  boxShadow: "0 4px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)",
-                  padding: "0.5rem 0.75rem",
-                  color: "var(--neutral-on-background-strong)",
-                }}
-              />
-              <Legend />
-              <Bar dataKey="income" fill={CHART_COLORS.positive} name="Ingresos" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="expense" fill={CHART_COLORS.negative} name="Gastos" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="invest" fill={CHART_COLORS.neutral} name="Inversiones" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div style={CHART_GLASS_STYLE}>
+            <ResponsiveContainer width="100%" height={700}>
+              <BarChart data={monthlyData.length > 0 ? monthlyData : [{ month: "Sin datos", income: 0, expense: 0, invest: 0 }]}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="month" tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 12 }} />
+                <YAxis tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 12 }} />
+                <Tooltip
+                  contentStyle={{
+                    background: "rgba(255,255,255,0.04)",
+                    backdropFilter: "blur(24px) saturate(1.6)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 8,
+                    boxShadow: "0 4px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)",
+                    padding: "0.5rem 0.75rem",
+                    color: "var(--neutral-on-background-strong)",
+                  }}
+                />
+                <Legend />
+                <Bar dataKey="income" name="Ingresos" radius={[4, 4, 0, 0]}>
+                  {monthlyData.map((_, i) => (
+                    <Cell key={`inc-${i}`} fill={getRandomBarColor(i * 3)} />
+                  ))}
+                </Bar>
+                <Bar dataKey="expense" name="Gastos" radius={[4, 4, 0, 0]}>
+                  {monthlyData.map((_, i) => (
+                    <Cell key={`exp-${i}`} fill={getRandomBarColor(i * 3 + 1)} />
+                  ))}
+                </Bar>
+                <Bar dataKey="invest" name="Inversiones" radius={[4, 4, 0, 0]}>
+                  {monthlyData.map((_, i) => (
+                    <Cell key={`inv-${i}`} fill={getRandomBarColor(i * 3 + 2)} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </ChartCard>
       </Grid>
       <Grid columns="2" gap="m">

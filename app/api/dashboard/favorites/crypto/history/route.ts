@@ -23,17 +23,86 @@ const CRYPTO_ID_MAP: Record<string, number> = {
   SUSHI: 6758, CRV: 6138, BAL: 5729, CAKE: 7182, RUNE: 4157,
 };
 
+const COINGECKO_MAP: Record<string, string> = {
+  BTC: "bitcoin", ETH: "ethereum", SOL: "solana", ADA: "cardano",
+  DOT: "polkadot", AVAX: "avalanche-2", MATIC: "matic-network",
+  LINK: "chainlink", UNI: "uniswap", ATOM: "cosmos",
+  XRP: "ripple", BNB: "binancecoin", DOGE: "dogecoin",
+  LTC: "litecoin", TRX: "tron", NEAR: "near",
+};
+
+async function fetchCMCHistory(ticker: string): Promise<Array<{ date: string; value: number }> | null> {
+  if (!CMC_KEY) return null;
+
+  const coinId = CRYPTO_ID_MAP[ticker.toUpperCase()];
+  if (!coinId) return null;
+
+  try {
+    const url = `${CMC_BASE}/cryptocurrency/quotes/latest?id=${coinId}&convert=USD`;
+    const res = await fetch(url, {
+      headers: { "X-CMC_PRO_API_KEY": CMC_KEY, "Accept": "application/json" },
+    });
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const cryptoData = data.data?.[coinId.toString()];
+    if (!cryptoData) return null;
+
+    const quote = cryptoData.quote?.USD;
+    if (!quote) return null;
+
+    const currentPrice = quote.price || 0;
+    const change24h = quote.percent_change_24h || 0;
+    const change7d = quote.percent_change_7d || 0;
+    const now = new Date();
+    const result: Array<{ date: string; value: number }> = [];
+
+    for (let i = 30; i >= 0; i--) {
+      const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+      const dateStr = date.toISOString().split("T")[0];
+      let estimatedPrice: number;
+      if (i === 0) {
+        estimatedPrice = currentPrice;
+      } else if (i <= 7) {
+        const factor = 1 - (change7d / 100) * (i / 7);
+        estimatedPrice = currentPrice / Math.max(factor, 0.1);
+      } else {
+        const factor = 1 - (change24h / 100) * i;
+        estimatedPrice = currentPrice / Math.max(factor, 0.1);
+      }
+      result.push({ date: dateStr, value: estimatedPrice });
+    }
+    return result;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchCoinGeckoHistory(ticker: string): Promise<Array<{ date: string; value: number }> | null> {
+  const geckoId = COINGECKO_MAP[ticker.toUpperCase()];
+  if (!geckoId) return null;
+
+  try {
+    const url = `https://api.coingecko.com/api/v3/coins/${geckoId}/market_chart?vs_currency=usd&days=30&interval=daily`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    if (!data.prices || data.prices.length === 0) return null;
+
+    return data.prices.map((p: [number, number]) => ({
+      date: new Date(p[0]).toISOString().split("T")[0],
+      value: p[1],
+    }));
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(req: NextRequest) {
   const ticker = req.nextUrl.searchParams.get("ticker");
   if (!ticker) {
     return NextResponse.json({ ok: false, error: "ticker required" }, { status: 400 });
-  }
-
-  if (!CMC_KEY) {
-    return NextResponse.json(
-      { ok: false, error: "CoinMarketCap API no configurada" },
-      { status: 503 }
-    );
   }
 
   const cacheKey = `cmc:history:${ticker.toUpperCase()}`;
@@ -42,68 +111,20 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, data: cached });
   }
 
-  const coinId = CRYPTO_ID_MAP[ticker.toUpperCase()];
-  if (!coinId) {
-    return NextResponse.json({ ok: false, error: `Unknown crypto: ${ticker}` }, { status: 400 });
+  const cmcData = await fetchCMCHistory(ticker);
+  if (cmcData && cmcData.length > 0) {
+    await kv.set(cacheKey, cmcData, { ex: 3600 });
+    return NextResponse.json({ ok: true, data: cmcData });
   }
 
-  try {
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-    const url = `${CMC_BASE}/cryptocurrency/quotes/latest?id=${coinId}&convert=USD`;
-    const res = await fetch(url, {
-      headers: {
-        "X-CMC_PRO_API_KEY": CMC_KEY,
-        "Accept": "application/json",
-      },
-    });
-
-    if (!res.ok) {
-      return NextResponse.json(
-        { ok: false, error: `CoinMarketCap API error: ${res.status}` },
-        { status: 500 }
-      );
-    }
-
-    const data = await res.json();
-    const cryptoData = data.data?.[coinId.toString()];
-    if (!cryptoData) {
-      return NextResponse.json({ ok: false, error: "Crypto not found" }, { status: 404 });
-    }
-
-    const quote = cryptoData.quote?.USD;
-    if (!quote) {
-      return NextResponse.json({ ok: false, error: "No quote data" }, { status: 404 });
-    }
-
-    const currentPrice = quote.price || 0;
-    const change24h = quote.percent_change_24h || 0;
-    const change7d = quote.percent_change_7d || 0;
-
-    const result: Array<{ date: string; value: number }> = [];
-
-    for (let i = 30; i >= 0; i--) {
-      const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-      const dateStr = date.toISOString().split("T")[0];
-
-      let estimatedPrice: number;
-      if (i === 0) {
-        estimatedPrice = currentPrice;
-      } else if (i <= 7) {
-        const factor = 1 - (change7d / 100) * (i / 7);
-        estimatedPrice = currentPrice / factor;
-      } else {
-        const factor = 1 - (change24h / 100) * i;
-        estimatedPrice = currentPrice / Math.max(factor, 0.1);
-      }
-
-      result.push({ date: dateStr, value: estimatedPrice });
-    }
-
-    await kv.set(cacheKey, result, { ex: 3600 });
-    return NextResponse.json({ ok: true, data: result });
-  } catch (err) {
-    return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });
+  const geckoData = await fetchCoinGeckoHistory(ticker);
+  if (geckoData && geckoData.length > 0) {
+    await kv.set(cacheKey, geckoData, { ex: 3600 });
+    return NextResponse.json({ ok: true, data: geckoData });
   }
+
+  return NextResponse.json(
+    { ok: false, error: `No se pudieron obtener datos historicos para ${ticker}` },
+    { status: 503 }
+  );
 }

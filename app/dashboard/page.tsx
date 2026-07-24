@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Column, Grid, Row, Heading, Text, Badge, RevealFx, Icon, Card, Button, Input, Select } from "@once-ui-system/core";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
@@ -10,7 +10,7 @@ import { ChartCarousel } from "@/components/charts/ChartCarousel";
 import { MacroStrip } from "@/components/dashboard/MacroStrip";
 import { useFinanceData } from "@/hooks/useFinanceData";
 import { formatCurrency, formatPercent, getChangeColor } from "@/lib/formatFinance";
-import { CATEGORY_PALETTE, CHART_COLORS } from "@/lib/chartColors";
+import { CATEGORY_PALETTE, CHART_COLORS, getRandomBarColor, CHART_GLASS_STYLE } from "@/lib/chartColors";
 
 export default function DashboardPage() {
   const { data, loading, error, refetch } = useFinanceData();
@@ -258,23 +258,37 @@ export default function DashboardPage() {
             label: "Balance Mensual",
             content: (
               <ChartCard title="Balance Mensual" subtitle="Ingresos vs Gastos" filename="monthly-balance" height={400}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.monthlyFinance.length > 0 ? data.monthlyFinance : [{ month: "Sin datos", income: 0, expense: 0 }]}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--neutral-alpha-weak)" />
-                    <XAxis dataKey="month" tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 12 }} />
-                    <YAxis tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 12 }} />
-                    <Tooltip
-                      contentStyle={{
-                        background: "var(--neutral-alpha-weak)",
-                        border: "1px solid var(--neutral-alpha-medium)",
-                        borderRadius: 8,
-                      }}
-                      formatter={(value) => [formatCurrency(Number(value)), ""]}
-                    />
-                    <Bar dataKey="income" fill={CHART_COLORS.positive} name="Ingresos" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="expense" fill={CHART_COLORS.negative} name="Gastos" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <div style={CHART_GLASS_STYLE}>
+                  <ResponsiveContainer width="100%" height={380}>
+                    <BarChart data={data.monthlyFinance.length > 0 ? data.monthlyFinance : [{ month: "Sin datos", income: 0, expense: 0 }]}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                      <XAxis dataKey="month" tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 12 }} />
+                      <YAxis tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 12 }} />
+                      <Tooltip
+                        contentStyle={{
+                          background: "rgba(255,255,255,0.04)",
+                          backdropFilter: "blur(24px) saturate(1.6)",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          borderRadius: 8,
+                          boxShadow: "0 4px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)",
+                          padding: "0.5rem 0.75rem",
+                          color: "var(--neutral-on-background-strong)",
+                        }}
+                        formatter={(value) => [formatCurrency(Number(value)), ""]}
+                      />
+                      <Bar dataKey="income" name="Ingresos" radius={[4, 4, 0, 0]}>
+                        {data.monthlyFinance.map((_, i) => (
+                          <Cell key={`inc-${i}`} fill={getRandomBarColor(i * 2)} />
+                        ))}
+                      </Bar>
+                      <Bar dataKey="expense" name="Gastos" radius={[4, 4, 0, 0]}>
+                        {data.monthlyFinance.map((_, i) => (
+                          <Cell key={`exp-${i}`} fill={getRandomBarColor(i * 2 + 1)} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </ChartCard>
             ),
           },

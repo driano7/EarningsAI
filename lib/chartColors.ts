@@ -39,3 +39,28 @@ export function getOnceUiColor(change: number | null): "success" | "danger" | "n
   if (change === null) return "neutral";
   return change > 0 ? "success" : change < 0 ? "danger" : "neutral";
 }
+
+const BAR_HUES = [170, 210, 260, 310, 30, 140, 200, 340, 50, 280, 100, 320];
+
+export function getRandomBarColor(index: number): string {
+  const hue = BAR_HUES[index % BAR_HUES.length];
+  return `hsl(${hue}, 70%, 60%)`;
+}
+
+export function getRandomBarGradient(index: number): { start: string; end: string } {
+  const hue = BAR_HUES[index % BAR_HUES.length];
+  return {
+    start: `hsl(${hue}, 75%, 55%)`,
+    end: `hsl(${hue}, 65%, 40%)`,
+  };
+}
+
+export const CHART_GLASS_STYLE = {
+  background: "rgba(255, 255, 255, 0.03)",
+  backdropFilter: "blur(20px) saturate(1.5)",
+  WebkitBackdropFilter: "blur(20px) saturate(1.5)",
+  border: "1px solid rgba(255, 255, 255, 0.08)",
+  borderRadius: 12,
+  boxShadow: "0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05), inset 0 -1px 0 rgba(0,0,0,0.08)",
+  overflow: "hidden" as const,
+};

@@ -11,8 +11,11 @@ export const env = {
   OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || "",
   KV_REST_API_URL: process.env.KV_REST_API_URL || "",
   KV_REST_API_TOKEN: process.env.KV_REST_API_TOKEN || "",
-  NEWS_API_KEY: process.env.NEWS_API_KEY || "",
-  FRED_API_KEY: process.env.FRED_API_KEY || "",
+  NEWS_API_KEY: process.env.NEWS || "",
+  FRED_API_KEY: process.env.FRED || "",
+  COINMARKETCAP_API_KEY: process.env.COINMARKETCAP || "",
   CRON_SECRET: process.env.CRON_SECRET || "",
   APP_URL: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+  VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "",
+  VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY || "",
 };

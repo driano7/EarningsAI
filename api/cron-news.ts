@@ -9,6 +9,7 @@ import { env } from "../lib/env";
 import { getAllUsers } from "../lib/kv";
 import { generateDailyNewsSummary } from "../lib/news-summary";
 import { sendMessage } from "../lib/telegram";
+import { sendSupernotaNotification } from "../lib/notifications";
 
 export const maxDuration = 300;
 
@@ -24,6 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   let sent = 0;
   let failed = 0;
+  let pushNotificationsSent = 0;
 
   for (const chatId of users) {
     try {
@@ -31,11 +33,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await sendMessage(chatId, summary);
       sent++;
       await new Promise((r) => setTimeout(r, 200));
+
+      // Send browser push notification
+      const pushSent = await sendSupernotaNotification(chatId);
+      if (pushSent) pushNotificationsSent++;
     } catch (err) {
       failed++;
       console.error(`Error sending supernota to ${chatId}:`, err);
     }
   }
 
-  return res.status(200).json({ ok: true, sent, failed, total: users.length });
+  return res.status(200).json({ ok: true, sent, failed, pushNotificationsSent, total: users.length });
 }

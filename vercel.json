@@ -5,7 +5,8 @@
     { "path": "/api/cron-afternoon", "schedule": "30 20 * * 1-5" },
     { "path": "/api/cron-evening",   "schedule": "0 23 * * 1-5" },
     { "path": "/api/cron-weekly",    "schedule": "0 14 * * 1" },
-    { "path": "/api/cron-news",      "schedule": "0 8 * * 1-5" }
+    { "path": "/api/cron-news",      "schedule": "0 8 * * 1-5" },
+    { "path": "/api/cron-earnings",  "schedule": "0 6 * * *" }
   ],
   "functions": {
     "api/webhook.ts": { "maxDuration": 60 },
@@ -13,6 +14,7 @@
     "api/cron-afternoon.ts": { "maxDuration": 300 },
     "api/cron-evening.ts": { "maxDuration": 300 },
     "api/cron-weekly.ts": { "maxDuration": 300 },
-    "api/cron-news.ts": { "maxDuration": 300 }
+    "api/cron-news.ts": { "maxDuration": 300 },
+    "api/cron-earnings.ts": { "maxDuration": 300 }
   }
 }
