@@ -27,6 +27,7 @@ type Period = "1w" | "1m" | "3m" | "1y";
 export default function WatchlistPage() {
   const [tickers, setTickers] = useState<TickerData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const [priceHistory, setPriceHistory] = useState<PricePoint[]>([]);
@@ -38,10 +39,14 @@ export default function WatchlistPage() {
     fetch("/api/dashboard/watchlist", {
       headers: { Authorization: `Bearer ${password}` },
     })
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error("Unauthorized");
+        return r.json();
+      })
       .then((data) => {
         if (data.ok) setTickers(data.tickers);
       })
+      .catch(() => setError("No se pudo cargar la watchlist. Verifica tu sesión."))
       .finally(() => setLoading(false));
   }, []);
 
@@ -97,6 +102,12 @@ export default function WatchlistPage() {
           Todos los tickers rastreados por los usuarios
         </Text>
       </Column>
+
+      {error && (
+        <Column padding="m" radius="m" background="danger-alpha-weak" border="danger-alpha-medium">
+          <Text variant="body-default-s" onBackground="danger-strong">{error}</Text>
+        </Column>
+      )}
 
       <Card padding="m" radius="m" className="glass-card" fillWidth>
         <Row gap="m" vertical="center" wrap>
