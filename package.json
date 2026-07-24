@@ -26,8 +26,7 @@
     "sharp": "^0.34.5",
     "vercel": "^34.0.0",
     "web-push": "^3.6.7",
-    "xlsx": "^0.18.5",
-    "yahoo-finance2": "^3.14.1"
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
