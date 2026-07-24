@@ -28,7 +28,6 @@ const PERIODS = [
 const CHART_TYPES = [
   { label: "Linea", value: "line" },
   { label: "Area", value: "area" },
-  { label: "Velas", value: "candlestick" },
 ] as const;
 
 const MOVEMENT_TYPES = [
@@ -49,7 +48,7 @@ export default function PortfolioAnalyticsPage() {
   } = usePortfolioHistory();
 
   const [showForm, setShowForm] = useState(false);
-  const [chartType, setChartType] = useState<"line" | "area" | "candlestick">("line");
+  const [chartType, setChartType] = useState<"line" | "area">("line");
   const [form, setForm] = useState({
     type: "buy" as string,
     ticker: "",
@@ -92,22 +91,6 @@ export default function PortfolioAnalyticsPage() {
       Crypto: s.cryptoValue,
     })),
   [snapshots]);
-
-  const candlestickData = useMemo(() => {
-    // Simulate OHLC from portfolio value data
-    return lineData.map((d, i, arr) => {
-      const prev = arr[i - 1]?.value ?? d.value;
-      const change = d.value - prev;
-      const volatility = Math.abs(change) * 0.1 + 1;
-      return {
-        month: d.month,
-        open: prev,
-        high: Math.max(prev, d.value) + volatility,
-        low: Math.min(prev, d.value) - volatility,
-        close: d.value,
-      };
-    });
-  }, [lineData]);
 
   const pieData = useMemo(() => {
     if (!summary) return [];
@@ -340,23 +323,7 @@ export default function PortfolioAnalyticsPage() {
               </Row>
               <div style={CHART_GLASS_STYLE}>
                 <ResponsiveContainer width="100%" height={280}>
-                  {chartType === "candlestick" ? (
-                    <CandlestickChart data={candlestickData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--neutral-alpha-medium)" />
-                      <XAxis dataKey="month" tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 11 }} />
-                      <YAxis tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 11 }} />
-                      <Tooltip
-                        contentStyle={{
-                          background: "rgba(255,255,255,0.04)",
-                          backdropFilter: "blur(24px)",
-                          border: "1px solid rgba(255,255,255,0.1)",
-                          borderRadius: "0.75rem",
-                          color: "var(--neutral-on-background-strong)",
-                        }}
-                      />
-                      <Candlestick dataKey={{ open: "open", high: "high", low: "low", close: "close" }} />
-                    </CandlestickChart>
-                  ) : chartType === "area" ? (
+                  {chartType === "area" ? (
                     <LineChart data={lineData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--neutral-alpha-medium)" />
                       <XAxis dataKey="month" tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 11 }} />
