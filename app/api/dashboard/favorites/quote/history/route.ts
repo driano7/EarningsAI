@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
 
     // Try Twelve Data first (better for historical data)
     if (TWELVE_KEY) {
-      const twelveData = await getHistoricalCloses(ticker, period);
+      const twelveData = await getHistoricalCloses(ticker, days);
       if (twelveData && twelveData.length > 0) {
         await kv.set(cacheKey, twelveData, { ex: 86400 });
         return NextResponse.json({ ok: true, data: twelveData });
