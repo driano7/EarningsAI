@@ -126,7 +126,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // 4. Store earnings in KV (30-day TTL)
-  const storePromises: Promise<void>[] = [];
+  const storePromises: Promise<unknown>[] = [];
   for (const [date, tickers] of earningsByDate) {
     const dayData: StoredEarningsDay = {
       date,
