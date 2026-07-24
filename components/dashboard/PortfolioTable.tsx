@@ -126,7 +126,7 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
   );
   const totalPnl = totalValue - totalCost;
   const totalPnlPercent = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
-  const totalColor = totalPnl >= 0 ? "#00D084" : "#FF4D4D";
+  const totalColor = totalPnl >= 0 ? "var(--success-medium)" : "var(--danger-medium)";
 
   const sortIndicator = (key: string) => {
     if (sortKey !== key) return "";
@@ -200,7 +200,7 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
           border: "1px solid var(--neutral-alpha-weak)",
         }}
       >
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 800 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ borderBottom: "1px solid var(--neutral-alpha-weak)" }}>
               <Th onClick={() => toggleSort("ticker")}>Nombre{sortIndicator("ticker")}</Th>
@@ -227,8 +227,8 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
                 const pnlColor = pos.pnl === null
                   ? "var(--neutral-on-background-weak)"
                   : pos.pnl >= 0
-                    ? "#00D084"
-                    : "#FF4D4D";
+                    ? "var(--success-medium)"
+                    : "var(--danger-medium)";
                 return (
                   <tr
                     key={pos.id}
@@ -236,6 +236,9 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
                   >
                     <td style={{ padding: "12px 16px" }}>
                       <Text variant="body-default-m" style={{ fontWeight: 600 }}>{pos.ticker}</Text>
+                      <Text variant="body-default-xs" onBackground="neutral-weak">
+                        {TYPE_LABELS[pos.type as PositionType] || pos.type}
+                      </Text>
                     </td>
                     <td style={{ padding: "12px 16px" }}>
                       <Text variant="body-default-s" onBackground="neutral-weak">

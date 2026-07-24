@@ -35,7 +35,10 @@ export async function getTickerNews(
 
   const url = `${BASE}?q=${q}&from=${from}&sortBy=relevancy&pageSize=${pageSize}&language=es,en&apiKey=${NEWS_API_KEY}`;
   const res = await fetch(url);
-  if (!res.ok) return [];
+  if (!res.ok) {
+    console.error(`NewsAPI error for ${ticker}:`, res.status, await res.text().catch(() => ""));
+    return [];
+  }
 
   const data = (await res.json()) as { articles?: NewsArticle[] };
   const articles: NewsArticle[] = data.articles || [];
@@ -53,7 +56,10 @@ export async function getMarketNews(pageSize = 10): Promise<NewsArticle[]> {
   const q = encodeURIComponent("S&P500 OR mercados OR Wall Street OR earnings");
   const url = `${BASE}?q=${q}&sortBy=publishedAt&pageSize=${pageSize}&language=es&apiKey=${NEWS_API_KEY}`;
   const res = await fetch(url);
-  if (!res.ok) return [];
+  if (!res.ok) {
+    console.error("NewsAPI market news error:", res.status, await res.text().catch(() => ""));
+    return [];
+  }
 
   const data = (await res.json()) as { articles?: NewsArticle[] };
   return data.articles || [];

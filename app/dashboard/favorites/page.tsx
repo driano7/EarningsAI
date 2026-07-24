@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Column, Row, Heading, Text, Badge, Card, Button, Input, IconButton, Grid } from "@once-ui-system/core";
 import { formatPercent } from "@/lib/formatFinance";
 import { getChartLineColor } from "@/lib/chartColors";
+import { TickerDetailChart } from "@/components/dashboard/TickerDetailChart";
 
 function Sparkline({ data, color, width = 120, height = 28 }: { data: number[]; color?: string; width?: number; height?: number }) {
   if (!data || data.length < 2) return null;
@@ -97,6 +98,7 @@ export default function FavoritesPage() {
   const [knownUsers, setKnownUsers] = useState<string[]>([]);
   const [showUserPicker, setShowUserPicker] = useState(false);
   const [logoErrors, setLogoErrors] = useState<Set<string>>(new Set());
+  const [selectedTicker, setSelectedTicker] = useState<{ ticker: string; type: "stock" | "etf" | "crypto" } | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem("quartly_chatId") || "";
@@ -327,7 +329,10 @@ export default function FavoritesPage() {
               const c = item as FavCrypto;
               const detail = cryptoDetails.get(c.ticker);
               return (
-                <Card key={c.ticker} padding="m" radius="m" fillWidth>
+                <Card key={c.ticker} padding="m" radius="m" fillWidth
+                  style={{ cursor: "pointer" }}
+                  onClick={() => setSelectedTicker({ ticker: c.ticker, type: "crypto" })}
+                >
                   <Row vertical="center" horizontal="between">
                     <Row gap="s" vertical="center">
                       {detail?.logo && !logoErrors.has(c.ticker) && (
@@ -371,7 +376,10 @@ export default function FavoritesPage() {
               const e = item as FavEtf;
               const detail = etfDetails.get(e.ticker);
               return (
-                <Card key={e.ticker} padding="m" radius="m" fillWidth>
+                <Card key={e.ticker} padding="m" radius="m" fillWidth
+                  style={{ cursor: "pointer" }}
+                  onClick={() => setSelectedTicker({ ticker: e.ticker, type: "etf" })}
+                >
                   <Row vertical="center" horizontal="between">
                     <Row gap="s" vertical="center">
                       {detail?.logo && !logoErrors.has(e.ticker) && (
@@ -410,7 +418,10 @@ export default function FavoritesPage() {
             const s = item as FavStock;
             const detail = stockDetails.get(s.ticker);
             return (
-              <Card key={s.ticker} padding="m" radius="m" fillWidth>
+              <Card key={s.ticker} padding="m" radius="m" fillWidth
+                style={{ cursor: "pointer" }}
+                onClick={() => setSelectedTicker({ ticker: s.ticker, type: "stock" })}
+              >
                 <Row vertical="stretch" horizontal="between">
                   <Column gap="s" fillWidth>
                     <Row gap="s" vertical="center">
@@ -470,6 +481,14 @@ export default function FavoritesPage() {
       <Text variant="label-default-xs" onBackground="neutral-weak">
         🔄 Datos de reportes se actualizan cada 24h · Los cambios se sincronizan con Telegram
       </Text>
+
+      {selectedTicker && (
+        <TickerDetailChart
+          ticker={selectedTicker.ticker}
+          type={selectedTicker.type}
+          onClose={() => setSelectedTicker(null)}
+        />
+      )}
     </Column>
   );
 }

@@ -5,6 +5,7 @@
  */
 
 import type { CryptoQuote, CryptoHistory } from "./types";
+import { getCMCQuote, isCMCEnabled } from "./coinmarketcap";
 
 const COINGECKO_BASE = "https://api.coingecko.com/api/v3";
 
@@ -64,6 +65,20 @@ export const CRYPTO_ID_MAP: Record<string, string> = {
 };
 
 export async function getCryptoQuote(ticker: string): Promise<CryptoQuote | null> {
+  if (isCMCEnabled()) {
+    const cmcQuote = await getCMCQuote(ticker);
+    if (cmcQuote) {
+      return {
+        ticker: cmcQuote.symbol,
+        name: cmcQuote.name,
+        priceUsd: cmcQuote.price,
+        change24h: cmcQuote.change24h,
+        change7d: cmcQuote.change7d,
+        marketCapUsd: cmcQuote.marketCap,
+      };
+    }
+  }
+
   const id = CRYPTO_ID_MAP[ticker.toUpperCase()];
   if (!id) return null;
 

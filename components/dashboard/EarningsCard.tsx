@@ -16,15 +16,15 @@ interface EarningsCardProps {
   onClick?: () => void;
 }
 
-function getSurpriseBg(color: "emerald" | "red" | "neutral") {
-  if (color === "emerald") return "success-alpha-weak" as const;
-  if (color === "red") return "danger-alpha-weak" as const;
+function getSurpriseBg(color: "success" | "danger" | "neutral") {
+  if (color === "success") return "success-alpha-weak" as const;
+  if (color === "danger") return "danger-alpha-weak" as const;
   return "neutral-alpha-weak" as const;
 }
 
-function getSurpriseOnBg(color: "emerald" | "red" | "neutral") {
-  if (color === "emerald") return "success-medium" as const;
-  if (color === "red") return "danger-medium" as const;
+function getSurpriseOnBg(color: "success" | "danger" | "neutral") {
+  if (color === "success") return "success-medium" as const;
+  if (color === "danger") return "danger-medium" as const;
   return "neutral-medium" as const;
 }
 

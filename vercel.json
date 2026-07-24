@@ -5,7 +5,7 @@
     { "path": "/api/cron-afternoon", "schedule": "30 20 * * 1-5" },
     { "path": "/api/cron-evening",   "schedule": "0 23 * * 1-5" },
     { "path": "/api/cron-weekly",    "schedule": "0 14 * * 1" },
-    { "path": "/api/cron-news",      "schedule": "0 14 * * 1-5" }
+    { "path": "/api/cron-news",      "schedule": "0 8 * * 1-5" }
   ],
   "functions": {
     "api/webhook.ts": { "maxDuration": 60 },

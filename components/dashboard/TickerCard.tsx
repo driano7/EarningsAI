@@ -67,7 +67,7 @@ export default function TickerCard({ ticker, name, sector, type, index }: Ticker
 
   const logoUrl = `https://cdn.simpleicons.org/${ticker.toLowerCase()}/white`;
   const isPositive = priceData?.change1d !== null && (priceData?.change1d ?? 0) >= 0;
-  const color = priceData?.change1d === null ? "var(--neutral-on-background-weak)" : isPositive ? "#00D084" : "#FF4D4D";
+  const color = priceData?.change1d === null ? "var(--neutral-on-background-weak)" : isPositive ? "var(--success-medium)" : "var(--danger-medium)";
 
   return (
     <motion.div
@@ -158,7 +158,7 @@ export default function TickerCard({ ticker, name, sector, type, index }: Ticker
               <Flex style={{ marginLeft: "auto" }}>
                 <Text
                   variant="label-default-l"
-                  style={{ color: "#666", fontSize: 10, textTransform: "uppercase" }}
+                  style={{ color: "var(--neutral-weak)", fontSize: 10, textTransform: "uppercase" }}
                 >
                   {type === "stock" ? "S&P 500" : type === "etf" ? "ETF" : "CRYPTO"}
                 </Text>

@@ -92,7 +92,7 @@ export default function DashboardPage() {
           <Row gap="8" vertical="center">
             {data.monthlyChange !== null && (
               <>
-                <Icon name="trendingUp" size="m" onBackground={getChangeColor(data.monthlyChange) === "emerald" ? "success-weak" : "danger-weak"} />
+                <Icon name="trendingUp" size="m" onBackground={getChangeColor(data.monthlyChange) === "success" ? "success-weak" : "danger-weak"} />
                 <Text variant="body-default-m" onBackground="neutral-weak">
                   {formatPercent(data.monthlyChange)} este mes
                 </Text>
@@ -115,7 +115,7 @@ export default function DashboardPage() {
                 </Row>
                 <Heading variant="heading-strong-m">{kpi.value}</Heading>
                 {kpi.change !== null && (
-                  <Text variant="label-default-xs" onBackground={changeColor === "emerald" ? "success-weak" : "danger-weak"}>
+                  <Text variant="label-default-xs" onBackground={changeColor === "success" ? "success-weak" : "danger-weak"}>
                     {kpi.change > 0 ? "+" : ""}{kpi.change}%
                   </Text>
                 )}
@@ -297,7 +297,7 @@ export default function DashboardPage() {
                 </Column>
                 <Column padding="16" background="surface" radius="m" border="neutral-alpha-medium" gap="xs">
                   <Text variant="label-default-xs" onBackground="neutral-weak">Cambio Mensual</Text>
-                  <Text variant="label-strong-m" onBackground={getChangeColor(data.monthlyChange) === "emerald" ? "success-medium" : "danger-medium"}>
+                  <Text variant="label-strong-m" onBackground={getChangeColor(data.monthlyChange) === "success" ? "success-medium" : "danger-medium"}>
                     {data.monthlyChange !== null ? formatPercent(data.monthlyChange) : "—"}
                   </Text>
                 </Column>

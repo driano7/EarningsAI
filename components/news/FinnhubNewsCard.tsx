@@ -1,16 +1,16 @@
 "use client";
 
 import { Column, Row, Text, Button } from "@once-ui-system/core";
-import type { NewsArticle } from "@/lib/news";
+import type { FinnhubNews } from "@/lib/finnhub";
 
-export function NewsCard({ article }: { article: NewsArticle }) {
-  const dateStr = new Date(article.publishedAt).toLocaleDateString("es-MX", {
+export function FinnhubNewsCard({ article }: { article: FinnhubNews }) {
+  const dateStr = new Date(article.datetime * 1000).toLocaleDateString("es-MX", {
     day: "numeric",
     month: "short",
     year: "numeric",
   });
 
-  const timeStr = new Date(article.publishedAt).toLocaleTimeString("es-MX", {
+  const timeStr = new Date(article.datetime * 1000).toLocaleTimeString("es-MX", {
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -24,12 +24,12 @@ export function NewsCard({ article }: { article: NewsArticle }) {
         overflow: "hidden",
       }}
     >
-      {article.urlToImage && (
+      {article.image && (
         <div
           style={{
             width: "100%",
-            height: 200,
-            backgroundImage: `url(${article.urlToImage})`,
+            height: 180,
+            backgroundImage: `url(${article.image})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
             backgroundColor: "var(--neutral-alpha-weak)",
@@ -39,18 +39,23 @@ export function NewsCard({ article }: { article: NewsArticle }) {
       <Column padding="m" gap="s">
         <Row gap="s" vertical="center" wrap>
           <Text variant="label-default-xs" onBackground="neutral-weak">
-            {article.source.name}
+            {article.source}
           </Text>
           <Text variant="label-default-xs" onBackground="neutral-weak">
             {dateStr} • {timeStr}
           </Text>
+          {article.category && (
+            <Text variant="label-default-xs" onBackground="brand-weak">
+              {article.category}
+            </Text>
+          )}
         </Row>
-        <Text variant="label-strong-s">{article.title}</Text>
-        {article.description && (
+        <Text variant="label-strong-s">{article.headline}</Text>
+        {article.summary && (
           <Text variant="body-default-s" onBackground="neutral-weak">
-            {article.description.length > 200
-              ? article.description.slice(0, 200) + "..."
-              : article.description}
+            {article.summary.length > 200
+              ? article.summary.slice(0, 200) + "..."
+              : article.summary}
           </Text>
         )}
         <Button

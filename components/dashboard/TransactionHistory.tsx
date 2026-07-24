@@ -169,7 +169,7 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
                     <td style={{ padding: "12px 16px" }}>
                       <Text
                         variant="body-default-s"
-                        style={{ color: isBuy ? "#00D084" : "#FF4D4D", fontWeight: 600 }}
+                        style={{ color: isBuy ? "var(--success-medium)" : "var(--danger-medium)", fontWeight: 600 }}
                       >
                         {isBuy ? "COMPRA" : "VENTA"}
                       </Text>

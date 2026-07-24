@@ -239,7 +239,9 @@ ${userContext}`;
     const orData = (await orRes.json()) as { choices?: Array<{ message: { content: string } }> };
     const reply = orData.choices?.[0]?.message?.content || "No pude procesar tu consulta.";
     return NextResponse.json({ reply, timestamp: new Date().toISOString() });
-  } catch {
-    return NextResponse.json({ reply: "Error al procesar tu consulta. Intenta de nuevo." }, { status: 200 });
+  } catch (err) {
+    console.error("Chat handler error:", err);
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ reply: `Error al procesar tu consulta. (${errorMsg.slice(0, 100)})` }, { status: 200 });
   }
 }

@@ -29,7 +29,7 @@ export function getChartLineColor(change: number | null): string {
   return change >= 0 ? CHART_COLORS.positive : CHART_COLORS.negative;
 }
 
-export function getOnceUiColor(change: number | null): "emerald" | "red" | "neutral" {
+export function getOnceUiColor(change: number | null): "success" | "danger" | "neutral" {
   if (change === null) return "neutral";
-  return change > 0 ? "emerald" : change < 0 ? "red" : "neutral";
+  return change > 0 ? "success" : change < 0 ? "danger" : "neutral";
 }

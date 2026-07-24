@@ -1,7 +1,6 @@
 /*
  * Quartly Bot — api/cron-news.ts
- * Copyright (c) Donovan Riaño. All rights reserved.
- * Use of this code requires prior authorization from the owner.
+ * Daily supernota at 8 AM UTC Mon-Fri. History auto-expires after 30 days.
  */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
@@ -23,6 +22,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   let sent = 0;
+  let failed = 0;
+
   for (const chatId of users) {
     try {
       const summary = await generateDailyNewsSummary(chatId);
@@ -30,9 +31,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       sent++;
       await new Promise((r) => setTimeout(r, 200));
     } catch (err) {
-      console.error(`Error sending news to ${chatId}:`, err);
+      failed++;
+      console.error(`Error sending supernota to ${chatId}:`, err);
     }
   }
 
-  return res.status(200).json({ ok: true, sent });
+  return res.status(200).json({ ok: true, sent, failed, total: users.length });
 }

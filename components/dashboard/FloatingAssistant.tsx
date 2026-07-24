@@ -48,8 +48,8 @@ export function FloatingAssistant() {
       <motion.div
         style={{
           position: "fixed",
-          bottom: isMobile ? "calc(6rem + env(safe-area-inset-bottom))" : 24,
-          right: 24,
+          bottom: isMobile ? "calc(6.5rem + env(safe-area-inset-bottom))" : 24,
+          right: 20,
           zIndex: 1000,
         }}
         whileHover={{ scale: 1.05 }}
@@ -57,14 +57,14 @@ export function FloatingAssistant() {
       >
         <IconButton
           icon="sparkles"
-          size="l"
+          size="m"
           variant="primary"
           onClick={() => setOpen(!open)}
           style={{
             borderRadius: "50%",
-            width: 56,
-            height: 56,
-            boxShadow: "0 4px 24px var(--brand-alpha-medium)",
+            width: 48,
+            height: 48,
+            boxShadow: "0 4px 20px var(--brand-alpha-medium)",
           }}
         />
         {!open && messages.length <= 1 && (
@@ -101,39 +101,36 @@ export function FloatingAssistant() {
             style={{
               position: "fixed",
               inset: isMobile ? 0 : undefined,
-              bottom: isMobile ? 0 : 92,
-              right: isMobile ? undefined : 24,
+              bottom: isMobile ? 0 : 80,
+              right: isMobile ? undefined : 16,
               top: isMobile ? 0 : undefined,
               left: isMobile ? undefined : undefined,
-              width: isMobile ? "100%" : 380,
-              maxHeight: isMobile ? "100vh" : "calc(100vh - 140px)",
+              width: isMobile ? "100%" : 340,
+              maxHeight: isMobile ? "100vh" : "calc(100vh - 120px)",
               zIndex: isMobile ? 2000 : 999,
-              borderRadius: isMobile ? 0 : 16,
+              borderRadius: isMobile ? 0 : 14,
               overflow: "hidden",
               border: isMobile ? "none" : "1px solid var(--neutral-alpha-medium)",
               background: "var(--neutral-background)",
-              boxShadow: isMobile ? "none" : "0 8px 40px rgba(0,0,0,0.4)",
+              boxShadow: isMobile ? "none" : "0 8px 32px rgba(0,0,0,0.5)",
               display: "flex",
               flexDirection: "column",
             }}
           >
             {/* Header */}
             <Row
-              padding="m"
+              padding="s"
+              paddingX="m"
               vertical="center"
               horizontal="between"
               style={{
                 borderBottom: "1px solid var(--neutral-alpha-weak)",
-                paddingTop: isMobile ? "max(1rem, env(safe-area-inset-top))" : undefined,
+                paddingTop: isMobile ? "max(0.75rem, env(safe-area-inset-top))" : undefined,
+                background: "var(--neutral-alpha-weak)",
+                flexShrink: 0,
               }}
             >
               <Row gap="s" vertical="center">
-                <IconButton
-                  icon="arrowLeft"
-                  size="s"
-                  variant="tertiary"
-                  onClick={() => setOpen(false)}
-                />
                 <Badge
                   background="success-alpha-weak"
                   onBackground="success-strong"
@@ -147,21 +144,34 @@ export function FloatingAssistant() {
                 </Badge>
                 <Text variant="heading-strong-s">Quartly AI</Text>
               </Row>
-              <IconButton
-                icon="trash"
-                size="s"
-                variant="tertiary"
-                tooltip="Limpiar chat"
-                onClick={clearChat}
-              />
+              <Row gap="xs">
+                <IconButton
+                  icon="trash"
+                  size="xs"
+                  variant="tertiary"
+                  tooltip="Limpiar"
+                  onClick={clearChat}
+                />
+                <IconButton
+                  icon="close"
+                  size="xs"
+                  variant="tertiary"
+                  onClick={() => setOpen(false)}
+                />
+              </Row>
             </Row>
 
             {/* Quick Actions */}
             <Row
-              paddingX="m"
-              paddingY="s"
-              gap="s"
-              style={{ overflowX: "auto", flexWrap: "nowrap", borderBottom: "1px solid var(--neutral-alpha-weak)" }}
+              paddingX="s"
+              paddingY="xs"
+              gap="xs"
+              style={{
+                overflowX: "auto",
+                flexWrap: "nowrap",
+                borderBottom: "1px solid var(--neutral-alpha-weak)",
+                flexShrink: 0,
+              }}
             >
               {QUICK_ACTIONS.map((a) => (
                 <button
@@ -170,13 +180,13 @@ export function FloatingAssistant() {
                   style={{
                     whiteSpace: "nowrap",
                     flexShrink: 0,
-                    padding: "6px 12px",
-                    borderRadius: 8,
+                    padding: "5px 10px",
+                    borderRadius: 6,
                     border: "1px solid var(--neutral-alpha-medium)",
                     background: "var(--neutral-alpha-weak)",
                     color: "var(--neutral-on-background-strong)",
                     cursor: "pointer",
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: 500,
                   }}
                 >
@@ -187,8 +197,9 @@ export function FloatingAssistant() {
 
             {/* Messages */}
             <Column
-              padding="m"
-              gap="m"
+              padding="s"
+              paddingX="m"
+              gap="s"
               style={{ overflowY: "auto", flex: 1, minHeight: 0 }}
             >
               {messages.map((msg) => (
@@ -200,7 +211,7 @@ export function FloatingAssistant() {
                   <Column
                     maxWidth="85%"
                     padding="s"
-                    radius="l"
+                    radius="m"
                     background={msg.role === "user" ? "brand-medium" : "surface"}
                     border={msg.role === "assistant" ? "neutral-alpha-weak" : undefined}
                     gap="xs"
@@ -211,21 +222,21 @@ export function FloatingAssistant() {
                           <motion.div
                             key={i}
                             style={{
-                              width: 6,
-                              height: 6,
+                              width: 5,
+                              height: 5,
                               borderRadius: "50%",
                               background: "var(--neutral-on-background-weak)",
                             }}
-                            animate={{ y: [0, -6, 0] }}
+                            animate={{ y: [0, -5, 0] }}
                             transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
                           />
                         ))}
                       </Row>
                     ) : (
                       <Text
-                        variant="body-default-s"
+                        variant="body-default-xs"
                         onBackground={msg.role === "user" ? "brand-strong" : "neutral-strong"}
-                        style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
+                        style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", lineHeight: 1.4 }}
                       >
                         {msg.content}
                       </Text>
@@ -238,17 +249,20 @@ export function FloatingAssistant() {
 
             {/* Input */}
             <Row
-              padding="m"
+              padding="s"
+              paddingX="m"
               gap="s"
               vertical="center"
               style={{
                 borderTop: "1px solid var(--neutral-alpha-weak)",
-                paddingBottom: isMobile ? "max(1rem, env(safe-area-inset-bottom))" : undefined,
+                paddingBottom: isMobile ? "max(0.75rem, env(safe-area-inset-bottom))" : undefined,
+                background: "var(--neutral-alpha-weak)",
+                flexShrink: 0,
               }}
             >
               <Input
                 id="floating-chat-input"
-                placeholder="Escribe tu consulta..."
+                placeholder="Escribe..."
                 value={input}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
                 onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -257,11 +271,11 @@ export function FloatingAssistant() {
                     handleSend();
                   }
                 }}
-                style={{ flex: 1 }}
+                style={{ flex: 1, fontSize: 13 }}
               />
               <IconButton
                 icon="arrowUp"
-                size="m"
+                size="s"
                 variant="primary"
                 disabled={!input.trim() || isLoading}
                 onClick={handleSend}

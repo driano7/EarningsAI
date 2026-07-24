@@ -25,7 +25,7 @@ export default function PriceChange({ value, label }: PriceChangeProps) {
 
   const isPositive = value >= 0;
   const arrow = isPositive ? "↑" : "↓";
-  const color = isPositive ? "#00D084" : "#FF4D4D";
+  const color = isPositive ? "var(--success-medium)" : "var(--danger-medium)";
 
   return (
     <Flex vertical="center" gap="xs">

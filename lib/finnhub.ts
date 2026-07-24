@@ -159,3 +159,39 @@ export function calcChange(closes: number[], daysBack: number): number | null {
   if (past === 0) return null;
   return ((current - past) / past) * 100;
 }
+
+export interface FinnhubNews {
+  id: number;
+  category: string;
+  datetime: number;
+  headline: string;
+  image: string;
+  related: string;
+  source: string;
+  summary: string;
+  url: string;
+}
+
+export async function getFinnhubGeneralNews(category = "general", pageSize = 10): Promise<FinnhubNews[]> {
+  try {
+    const res = await fetch(`${BASE}/news?category=${category}&token=${TOKEN}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (Array.isArray(data) ? data : []).slice(0, pageSize);
+  } catch {
+    return [];
+  }
+}
+
+export async function getFinnhubCompanyNews(ticker: string, pageSize = 5): Promise<FinnhubNews[]> {
+  try {
+    const from = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    const to = new Date().toISOString().split("T")[0];
+    const res = await fetch(`${BASE}/company-news?symbol=${ticker}&from=${from}&to=${to}&token=${TOKEN}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (Array.isArray(data) ? data : []).slice(0, pageSize);
+  } catch {
+    return [];
+  }
+}

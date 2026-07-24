@@ -27,11 +27,11 @@ export default function AnalystSignal({ strongBuy, buy, hold, sell, strongSell }
   }
 
   const bars = [
-    { label: "Compra fuerte", value: strongBuy, color: "#00D084" },
-    { label: "Compra", value: buy, color: "#4CAF50" },
-    { label: "Mantener", value: hold, color: "#FFC107" },
-    { label: "Vende", value: sell, color: "#FF7043" },
-    { label: "Vende fuerte", value: strongSell, color: "#FF4D4D" },
+    { label: "Compra fuerte", value: strongBuy, color: "var(--success-medium)" },
+    { label: "Compra", value: buy, color: "var(--success-weak)" },
+    { label: "Mantener", value: hold, color: "var(--warning-medium)" },
+    { label: "Vende", value: sell, color: "var(--danger-weak)" },
+    { label: "Vende fuerte", value: strongSell, color: "var(--danger-medium)" },
   ].filter((b) => b.value > 0);
 
   return (
