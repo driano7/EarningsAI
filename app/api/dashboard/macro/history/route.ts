@@ -13,13 +13,27 @@ const FRED_KEY = process.env.FRED || "";
 const FRED_DAILY_LIMIT = 50;
 const FRED_RATE_KEY = "ratelimit:fred";
 
+const periodToDays: Record<string, number> = {
+  "1d": 1,
+  "1w": 7,
+  "1m": 30,
+  "3m": 90,
+  "6m": 180,
+  "1y": 365,
+  "3y": 1095,
+};
+
 export async function GET(req: NextRequest) {
   const seriesId = req.nextUrl.searchParams.get("seriesId");
+  const period = req.nextUrl.searchParams.get("period") || "1y";
+
   if (!seriesId) {
     return NextResponse.json({ ok: false, error: "seriesId required" }, { status: 400 });
   }
 
-  const cacheKey = `fred:history:${seriesId}`;
+  const days = periodToDays[period] || 365;
+  const cacheKey = `fred:history:${seriesId}:${period}`;
+
   const cached = await kv.get<Array<{ date: string; value: number }>>(cacheKey);
   if (cached) {
     return NextResponse.json({ ok: true, data: cached });
@@ -31,7 +45,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const from = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    const from = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
     const url = `${FRED_BASE}?series_id=${seriesId}&api_key=${FRED_KEY}&file_type=json&sort_order=asc&observation_start=${from}`;
     const res = await fetch(url);
     if (!res.ok) {

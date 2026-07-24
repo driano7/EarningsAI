@@ -7,9 +7,10 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Column, Row, Text, IconButton, Skeleton } from "@once-ui-system/core";
+import { Column, Row, Text, IconButton, Skeleton, Select } from "@once-ui-system/core";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
+  BarChart, Bar, LineChart, Line, AreaChart, Area,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
 import { getRandomBarColor, CHART_GLASS_STYLE } from "@/lib/chartColors";
 
@@ -25,15 +26,33 @@ interface Props {
   onClose: () => void;
 }
 
+const PERIODS = [
+  { label: "1D", value: "1d" },
+  { label: "1W", value: "1w" },
+  { label: "1M", value: "1m" },
+  { label: "3M", value: "3m" },
+  { label: "6M", value: "6m" },
+  { label: "1A", value: "1y" },
+  { label: "3A", value: "3y" },
+];
+
+const CHART_TYPES = [
+  { label: "Linea", value: "line" },
+  { label: "Area", value: "area" },
+  { label: "Barras", value: "bar" },
+] as const;
+
 export function MacroChart({ seriesId, label, unit, onClose }: Props) {
   const [data, setData] = useState<MacroHistorical[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [period, setPeriod] = useState("1y");
+  const [chartType, setChartType] = useState<"line" | "area" | "bar">("bar");
 
   useEffect(() => {
     setLoading(true);
     setError("");
-    fetch(`/api/dashboard/macro/history?seriesId=${seriesId}`)
+    fetch(`/api/dashboard/macro/history?seriesId=${seriesId}&period=${period}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.ok && d.data) {
@@ -44,7 +63,7 @@ export function MacroChart({ seriesId, label, unit, onClose }: Props) {
       })
       .catch(() => setError("Error cargando datos"))
       .finally(() => setLoading(false));
-  }, [seriesId]);
+  }, [seriesId, period]);
 
   const latest = data.length > 0 ? data[data.length - 1].value : null;
   const prev = data.length > 1 ? data[data.length - 2].value : null;
@@ -120,7 +139,23 @@ export function MacroChart({ seriesId, label, unit, onClose }: Props) {
               </Text>
             )}
           </Row>
-          <IconButton icon="close" size="s" variant="tertiary" onClick={onClose} />
+          <Row gap="s" vertical="center">
+            <Select
+              options={PERIODS}
+              value={period}
+              onSelect={setPeriod}
+              placeholder="Periodo"
+              style={{ width: 80 }}
+            />
+            <Select
+              options={CHART_TYPES}
+              value={chartType}
+              onSelect={setChartType}
+              placeholder="Tipo"
+              style={{ width: 80 }}
+            />
+            <IconButton icon="close" size="s" variant="tertiary" onClick={onClose} />
+          </Row>
         </Row>
 
         <Column padding="l" style={{ overflowY: "auto", flex: 1 }}>
@@ -131,37 +166,92 @@ export function MacroChart({ seriesId, label, unit, onClose }: Props) {
               <Text variant="body-default-s" onBackground="neutral-weak">{error}</Text>
             </Column>
           ) : (
-            <div style={{ width: "100%", height: 350, ...CHART_GLASS_STYLE, padding: "0.5rem" }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 10 }}
-                    interval="preserveStartEnd"
-                  />
-                  <YAxis
-                    tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 10 }}
-                    domain={["auto", "auto"]}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: "rgba(255,255,255,0.04)",
-                      backdropFilter: "blur(24px) saturate(1.6)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      borderRadius: 8,
-                      boxShadow: "0 4px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)",
-                      padding: "0.5rem 0.75rem",
-                      color: "var(--neutral-on-background-strong)",
-                    }}
-                    formatter={(value) => [`${Number(value).toFixed(3)} ${unit}`, label]}
-                  />
-                  <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={20}>
-                    {data.map((_, i) => (
-                      <Cell key={`cell-${i}`} fill={barColors[i]} />
-                    ))}
-                  </Bar>
-                </BarChart>
+            <div style={CHART_GLASS_STYLE}>
+              <ResponsiveContainer width="100%" height={400}>
+                {chartType === "bar" ? (
+                  <BarChart data={data}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 10 }}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis
+                      tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 10 }}
+                      domain={["auto", "auto"]}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: "rgba(255,255,255,0.04)",
+                        backdropFilter: "blur(24px) saturate(1.6)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        borderRadius: 8,
+                        boxShadow: "0 4px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)",
+                        padding: "0.5rem 0.75rem",
+                        color: "var(--neutral-on-background-strong)",
+                      }}
+                      formatter={(value) => [`${Number(value).toFixed(3)} ${unit}`, label]}
+                    />
+                    <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={20}>
+                      {data.map((_, i) => (
+                        <Cell key={`cell-${i}`} fill={barColors[i]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                ) : chartType === "area" ? (
+                  <AreaChart data={data}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 10 }}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis
+                      tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 10 }}
+                      domain={["auto", "auto"]}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: "rgba(255,255,255,0.04)",
+                        backdropFilter: "blur(24px) saturate(1.6)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        borderRadius: 8,
+                        boxShadow: "0 4px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)",
+                        padding: "0.5rem 0.75rem",
+                        color: "var(--neutral-on-background-strong)",
+                      }}
+                      formatter={(value) => [`${Number(value).toFixed(3)} ${unit}`, label]}
+                    />
+                    <Area type="monotone" dataKey="value" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.2} />
+                    <Line type="monotone" dataKey="value" stroke="#06b6d4" strokeWidth={2} dot={false} />
+                  </AreaChart>
+                ) : (
+                  <LineChart data={data}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 10 }}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis
+                      tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 10 }}
+                      domain={["auto", "auto"]}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: "rgba(255,255,255,0.04)",
+                        backdropFilter: "blur(24px) saturate(1.6)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        borderRadius: 8,
+                        boxShadow: "0 4px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)",
+                        padding: "0.5rem 0.75rem",
+                        color: "var(--neutral-on-background-strong)",
+                      }}
+                      formatter={(value) => [`${Number(value).toFixed(3)} ${unit}`, label]}
+                    />
+                    <Line type="monotone" dataKey="value" stroke="#06b6d4" strokeWidth={2} dot={false} />
+                  </LineChart>
+                )}
               </ResponsiveContainer>
             </div>
           )}
