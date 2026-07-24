@@ -129,7 +129,7 @@ export default function FinancePage() {
             <Text variant="body-default-s">{m} meses</Text>
           </Card>
         ))}
-        <div style={{ width: 1, height: 24, background: "var(--neutral-alpha-medium)" }} />
+        <Column style={{ width: 1, height: 24, background: "var(--neutral-alpha-medium)" }} />
         {["2026-05", "2026-04", "2026-03", "2026-02", "2026-01", "2025-12"].map((m) => (
           <Card
             key={m}

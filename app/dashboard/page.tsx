@@ -185,7 +185,7 @@ export default function DashboardPage() {
             content: (
               <ChartCard title="Distribución del Portafolio" subtitle="Por activo" filename="portfolio-allocation">
                 <Row gap="l" vertical="center" fillWidth wrap>
-                  <div style={{ width: "50%", minWidth: 200, height: 280 }}>
+                  <Column style={{ width: "50%", minWidth: 200, height: 280 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -211,7 +211,7 @@ export default function DashboardPage() {
                         />
                       </PieChart>
                     </ResponsiveContainer>
-                  </div>
+                  </Column>
                   <Column gap="m" style={{ flex: 1, minWidth: 200 }}>
                     {(() => {
                       const sorted = [...data.portfolioAllocation].sort((a, b) => b.value - a.value);
@@ -227,11 +227,13 @@ export default function DashboardPage() {
                                 const pct = total > 0 ? (item.value / total) * 100 : 0;
                                 return (
                                   <Row key={item.ticker} gap="xs" vertical="center" fillWidth>
-                                    <div style={{
-                                      width: 8, height: 8, borderRadius: 2,
-                                      background: CATEGORY_PALETTE[idx % CATEGORY_PALETTE.length],
-                                      flexShrink: 0,
-                                    }} />
+                                    <Column
+                                      style={{
+                                        width: 8, height: 8, borderRadius: 2,
+                                        background: CATEGORY_PALETTE[idx % CATEGORY_PALETTE.length],
+                                        flexShrink: 0,
+                                      }}
+                                    />
                                     <Text variant="body-default-s" style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.ticker}</Text>
                                     <Text variant="label-default-s" style={{ whiteSpace: "nowrap" }}>{formatCurrency(item.value)}</Text>
                                     <Text variant="label-default-xs" onBackground="neutral-weak" style={{ whiteSpace: "nowrap" }}>({pct.toFixed(1)}%)</Text>

@@ -185,18 +185,22 @@ export default function TransactionsPage() {
                       <Text variant="heading-strong-s">{cat.name}</Text>
                       <Badge textVariant="label-default-s" color="brand">{cat.pct.toFixed(1)}%</Badge>
                     </Row>
-                    <div style={{
-                      height: 6, borderRadius: 3,
-                      background: "var(--neutral-alpha-weak)",
-                      overflow: "hidden",
-                    }}>
-                      <div style={{
-                        width: `${barWidth}%`, height: "100%",
-                        background: "var(--brand-on-background-strong)",
-                        borderRadius: 3,
-                        transition: "width 0.5s ease",
-                      }} />
-                    </div>
+                    <Column
+                      style={{
+                        height: 6, borderRadius: 3,
+                        background: "var(--neutral-alpha-weak)",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <Column
+                        style={{
+                          width: `${barWidth}%`, height: "100%",
+                          background: "var(--brand-on-background-strong)",
+                          borderRadius: 3,
+                          transition: "width 0.5s ease",
+                        }}
+                      />
+                    </Column>
                     <Text variant="heading-strong-m">${cat.total.toLocaleString()}</Text>
                     <Column gap="xs">
                       {cat.items.map((item, i) => {
@@ -285,7 +289,7 @@ export default function TransactionsPage() {
                   )}
                 </Row>
               ))}
-              <div style={{ height: 1, background: "var(--neutral-alpha-weak)", margin: "4px 0" }} />
+              <Column style={{ height: 1, background: "var(--neutral-alpha-weak)", margin: "4px 0" }} />
               <Row vertical="center" horizontal="between">
                 <Text variant="label-strong-s">Total Ingresos</Text>
                 <Text variant="label-strong-l" onBackground="success-medium">+${data.totalIncome.toLocaleString()}</Text>

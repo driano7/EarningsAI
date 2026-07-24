@@ -173,22 +173,28 @@ async function handleCallback(cb: { id: string; data: string; message: { chat: {
   const chatId = String(cb.message.chat.id);
   const [action, ticker] = cb.data.split(":");
 
-  if (action === "remove_stock") {
-    await removeStock(chatId, ticker);
-    await sendMessage(chatId, `🗑️ *${ticker}* eliminado de tu watchlist de acciones.`);
-  } else if (action === "remove_etf") {
-    await removeEtf(chatId, ticker);
-    await sendMessage(chatId, `🗑️ *${ticker}* eliminado de tu watchlist de ETFs.`);
-  } else if (action === "remove_crypto") {
-    await removeCrypto(chatId, ticker);
-    await sendMessage(chatId, `🗑️ *${ticker}* eliminado de tu watchlist de cryptos.`);
+  try {
+    if (action === "remove_stock") {
+      await removeStock(chatId, ticker);
+      await sendMessage(chatId, `🗑️ *${ticker}* eliminado de tu watchlist de acciones.`);
+    } else if (action === "remove_etf") {
+      await removeEtf(chatId, ticker);
+      await sendMessage(chatId, `🗑️ *${ticker}* eliminado de tu watchlist de ETFs.`);
+    } else if (action === "remove_crypto") {
+      await removeCrypto(chatId, ticker);
+      await sendMessage(chatId, `🗑️ *${ticker}* eliminado de tu watchlist de cryptos.`);
+    } else {
+      console.warn("Unknown callback action:", action, "full data:", cb.data);
+    }
+  } catch (err) {
+    console.error(`Error handling callback [${action}:${ticker}]:`, err);
+  } finally {
+    await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ callback_query_id: cb.id }),
+    });
   }
-
-  await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ callback_query_id: cb.id }),
-  });
 }
 
 function resolveTickerInfo(ticker: string): { name: string; sector: string } {

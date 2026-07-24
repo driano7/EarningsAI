@@ -13,7 +13,7 @@ function Sparkline({ data, color, width = 120, height = 28 }: { data: number[]; 
   const points = data.map((v, i) => `${(i / (data.length - 1)) * width},${height - ((v - min) / range) * (height - 4) - 2}`).join(" ");
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ flexShrink: 0 }}>
-      <polyline points={points} fill="none" stroke={color || "var(--brand-on-background-strong)"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+      <polyline points={points} fill="none" stroke={color || "var(--cyan-400)"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -357,7 +357,7 @@ export default function FavoritesPage() {
                           </Text>
                         )}
                         {detail?.sparkline && detail.sparkline.length > 1 && (
-                          <Sparkline data={detail.sparkline} color={detail.change24h != null && detail.change24h >= 0 ? "var(--chart-positive, #00D084)" : "var(--chart-negative, #FF4D4D)"} />
+                          <Sparkline data={detail.sparkline} color={getChartLineColor(detail.change24h)} />
                         )}
                       </Column>
                     </Row>
@@ -397,7 +397,7 @@ export default function FavoritesPage() {
                         )}
                         <Text variant="label-default-xs" onBackground="neutral-weak">{e.sector || "—"}</Text>
                         {detail?.sparkline && detail.sparkline.length > 1 && (
-                          <Sparkline data={detail.sparkline} color={detail.quote && detail.quote.d >= 0 ? "var(--chart-positive, #00D084)" : "var(--chart-negative, #FF4D4D)"} />
+                          <Sparkline data={detail.sparkline} color={getChartLineColor(detail.quote?.d ?? null)} />
                         )}
                       </Column>
                     </Row>
@@ -439,7 +439,7 @@ export default function FavoritesPage() {
                     )}
 
                     {detail?.sparkline && detail.sparkline.length > 1 && (
-                      <Sparkline data={detail.sparkline} color={detail.quote && detail.quote.d >= 0 ? "var(--chart-positive, #00D084)" : "var(--chart-negative, #FF4D4D)"} />
+                      <Sparkline data={detail.sparkline} color={getChartLineColor(detail.quote?.d ?? null)} />
                     )}
 
                     {detail && detail.earnings.length > 0 && (
