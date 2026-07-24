@@ -8,7 +8,6 @@
 
 import { Column, Row, Text, IconButton, Badge } from "@once-ui-system/core";
 import { useState, useEffect } from "react";
-import { DailySummaryCard } from "./DailySummaryCard";
 
 interface SummaryHistoryModalProps {
   isOpen: boolean;
@@ -23,6 +22,20 @@ function formatDateDisplay(dateStr: string): string {
   return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+function formatTimeAgo(timestamp: number): string {
+  const diff = Date.now() - timestamp;
+  const hours = Math.floor(diff / 3600000);
+  if (hours < 1) return "hace un momento";
+  if (hours < 24) return `hace ${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `hace ${days}d`;
+}
+
+function getPreview(content: string, maxLength = 120): string {
+  const clean = content.replace(/SUPERNOTA.*?\n/, "").replace(/\n+/g, " ").trim();
+  return clean.length > maxLength ? clean.slice(0, maxLength) + "..." : clean;
+}
+
 interface SummaryEntry {
   date: string;
   content: string;
@@ -32,6 +45,7 @@ interface SummaryEntry {
 export function SummaryHistoryModal({ isOpen, onClose, chatId }: SummaryHistoryModalProps) {
   const [history, setHistory] = useState<SummaryEntry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [expandedDate, setExpandedDate] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen || !chatId) return;
@@ -79,7 +93,7 @@ export function SummaryHistoryModal({ isOpen, onClose, chatId }: SummaryHistoryM
         style={{
           position: "relative",
           maxWidth: 520,
-          maxHeight: "80vh",
+          maxHeight: "85vh",
           background: "var(--neutral-background)",
           border: "1px solid var(--neutral-alpha-medium)",
           boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
@@ -121,7 +135,7 @@ export function SummaryHistoryModal({ isOpen, onClose, chatId }: SummaryHistoryM
 
         <Column
           padding="l"
-          gap="m"
+          gap="s"
           style={{
             overflowY: "auto",
             flex: 1,
@@ -143,15 +157,73 @@ export function SummaryHistoryModal({ isOpen, onClose, chatId }: SummaryHistoryM
               </Text>
             </Column>
           ) : (
-            history.map((summary, i) => (
-              <DailySummaryCard
-                key={summary.date}
-                date={summary.date}
-                content={summary.content}
-                createdAt={summary.createdAt}
-                isLatest={i === 0}
-              />
-            ))
+            history.map((summary, i) => {
+              const isExpanded = expandedDate === summary.date;
+              return (
+                <Card
+                  key={summary.date}
+                  padding={isExpanded ? "l" : "m"}
+                  radius="m"
+                  fillWidth
+                  className="liquid-glass-sm"
+                  style={{
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                    border: isExpanded ? "1px solid var(--brand-medium)" : "1px solid var(--neutral-alpha-weak)",
+                    background: isExpanded ? "var(--brand-alpha-weak)" : "transparent",
+                  }}
+                  onClick={() => setExpandedDate(isExpanded ? null : summary.date)}
+                >
+                  {!isExpanded ? (
+                    <Row vertical="center" horizontal="between">
+                      <Column gap="xs">
+                        <Text variant="label-strong-s">{formatDateDisplay(summary.date)}</Text>
+                        <Row gap="s" vertical="center">
+                          <Badge
+                            background="brand-alpha-weak"
+                            onBackground="brand-medium"
+                            paddingX="s"
+                            paddingY="xs"
+                          >
+                            <Text variant="label-default-xs">{i === 0 ? "HOY" : formatTimeAgo(summary.createdAt)}</Text>
+                          </Badge>
+                        </Row>
+                      </Column>
+                      <IconButton
+                        icon="chevronDown"
+                        size="s"
+                        variant="tertiary"
+                        onClick={(e) => { e.stopPropagation(); setExpandedDate(summary.date); }}
+                      />
+                    </Row>
+                  ) : (
+                    <Column gap="m">
+                      <Row vertical="center" horizontal="between">
+                        <Column gap="xs">
+                          <Text variant="label-strong-s">{formatDateDisplay(summary.date)}</Text>
+                          <Text variant="label-default-xs" onBackground="neutral-weak">
+                            {formatTimeAgo(summary.createdAt)}
+                          </Text>
+                        </Column>
+                        <IconButton
+                          icon="close"
+                          size="s"
+                          variant="tertiary"
+                          onClick={(e) => { e.stopPropagation(); setExpandedDate(null); }}
+                        />
+                      </Row>
+                      <Text
+                        variant="body-default-s"
+                        onBackground="neutral-weak"
+                        style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}
+                      >
+                        {summary.content}
+                      </Text>
+                    </Column>
+                  )}
+                </Card>
+              );
+            })
           )}
         </Column>
       </Column>

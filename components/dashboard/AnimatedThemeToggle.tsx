@@ -11,7 +11,7 @@ import { useTheme } from "@once-ui-system/core";
 import { BsSunFill, BsMoonFill } from "react-icons/bs";
 
 export function AnimatedThemeToggle() {
-  const { theme, resolvedTheme, setTheme } = useTheme();
+  const { theme, resolvedTheme, setTheme: setThemeOnce } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [pulses, setPulses] = useState<number[]>([]);
   const [iconState, setIconState] = useState<"visible" | "exiting" | "entering">("visible");
@@ -46,11 +46,15 @@ export function AnimatedThemeToggle() {
 
     setIconState("exiting");
     setTimeout(() => {
-      setTheme(isDark ? "light" : "dark");
+      const newTheme = isDark ? "light" : "dark";
+      // Use both Once UI setTheme and direct DOM manipulation for reliability
+      setThemeOnce(newTheme);
+      root.setAttribute("data-theme", newTheme);
+      localStorage.setItem("once-ui-theme", newTheme);
       setIconState("entering");
       setTimeout(() => setIconState("visible"), 300);
     }, 200);
-  }, [isDark, setTheme]);
+  }, [isDark, setThemeOnce, resolvedTheme]);
 
   const pulseBg = isDark
     ? "radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)"
@@ -64,11 +68,7 @@ export function AnimatedThemeToggle() {
       type="button"
     >
       {pulses.map((id) => (
-        <span
-          key={id}
-          className="theme-toggle-pulse"
-          style={{ background: pulseBg }}
-        />
+        <span key={id} className="theme-toggle-pulse" style={{ background: pulseBg }} />
       ))}
       <span
         className={`theme-toggle-icon ${
