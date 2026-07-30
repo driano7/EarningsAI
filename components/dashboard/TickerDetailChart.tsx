@@ -89,6 +89,11 @@ export function TickerDetailChart({ ticker, type, onClose }: Props) {
 
   const colorMap = { stock: "brand", etf: "accent", crypto: "brand" } as const;
   const lineColor = change !== null && change >= 0 ? "var(--success-strong)" : "var(--danger-strong)";
+  const resolvedFill = change === null
+    ? "#94a3b8"
+    : change >= 0
+      ? "#22c55e"
+      : "#ef4444";
 
   return (
     <div
@@ -128,7 +133,6 @@ export function TickerDetailChart({ ticker, type, onClose }: Props) {
           boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
           display: "flex",
           flexDirection: "column",
-          overflow: "hidden",
           zIndex: 2000,
         }}
       >
@@ -206,7 +210,7 @@ export function TickerDetailChart({ ticker, type, onClose }: Props) {
                       }}
                       formatter={(value) => [`$${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, ticker]}
                     />
-                    <Bar dataKey="value" fill={lineColor} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="value" fill={resolvedFill} radius={[4, 4, 0, 0]} maxBarSize={40} />
                   </BarChart>
                 ) : chartType === "area" ? (
                   <AreaChart data={data}>

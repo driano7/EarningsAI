@@ -113,7 +113,6 @@ export function MacroChart({ seriesId, label, unit, onClose }: Props) {
           boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
           display: "flex",
           flexDirection: "column",
-          overflow: "hidden",
         }}
       >
         <Row

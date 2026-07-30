@@ -66,7 +66,7 @@ export default function BotPage() {
           </Column>
         </Row>
         <IconButton
-          icon="trash2"
+          icon="trash"
           size="s"
           variant="tertiary"
           tooltip="Limpiar chat"

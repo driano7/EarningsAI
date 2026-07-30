@@ -273,11 +273,7 @@ async function generateAISupernota(
 async function saveSummary(chatId: string, date: string, content: string): Promise<void> {
   const key = `supernota:${chatId}:${date}`;
   const entry: DailySummary = { date, content, createdAt: Date.now() };
-  try {
-    await kv.set(key, entry, { ex: SUMMARY_TTL_SECONDS });
-  } catch {
-    // KV write failed
-  }
+  await kv.set(key, entry, { ex: SUMMARY_TTL_SECONDS });
 }
 
 export async function getSummaryHistory(chatId: string): Promise<DailySummary[]> {

@@ -14,6 +14,12 @@
 
 Quartly is a Telegram bot that delivers earnings data, financial analysis, and market intelligence for **S&P 500 companies**, **ETFs**, and **custom tickers** (TSM, ASML, SAP, NVO, SHOP). It automatically tracks your watchlist, sends reminders before earnings reports, and generates AI-powered analysis when companies publish their quarterly results.
 
+### Bug Fixes (v1.0.1)
+
+- **Bar charts invisible** - Fixed fill color resolution for Recharts bar charts using resolved hex colors instead of CSS variables
+- **Dropdown menus behind** - Fixed Select dropdowns clipping behind modal components
+- **Icon warnings** - Replaced invalid icon "trash2" with valid icon "trash" in bot interface
+
 ### Key Features
 
 - **Watchlist Management** — Track up to 30 stocks and ETFs via Telegram inline search
