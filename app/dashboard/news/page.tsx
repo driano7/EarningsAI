@@ -7,7 +7,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Column, Row, Heading, Text, Skeleton, Badge, IconButton } from "@once-ui-system/core";
+import { Column, Row, Heading, Text, Skeleton, Badge, Icon, IconButton } from "@once-ui-system/core";
 import { NewsCard } from "@/components/news/NewsCard";
 import { FinnhubNewsCard } from "@/components/news/FinnhubNewsCard";
 import { DailySummaryCard } from "@/components/news/DailySummaryCard";
@@ -53,6 +53,7 @@ export default function NewsPage() {
   const [favBundle, setFavBundle] = useState<FavBundle | null>(null);
   const [favLoading, setFavLoading] = useState(false);
   const [favRefresh, setFavRefresh] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [tickers, setTickers] = useState<string[]>([]);
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
@@ -108,7 +109,16 @@ export default function NewsPage() {
     fetch(`/api/dashboard/news/favorites?chatId=${chatId}${favRefresh ? "&refresh=1" : ""}`)
       .then((r) => r.json())
       .then((data) => {
-        if (data.ok) setFavBundle(data);
+        if (data.ok) {
+          setFavBundle(data);
+          setOpenGroups((prev) => {
+            const next: Record<string, boolean> = {};
+            data.groups.forEach((g: FavGroup, i: number) => {
+              next[g.ticker] = prev?.[g.ticker] !== undefined ? prev[g.ticker] : i === 0;
+            });
+            return next;
+          });
+        }
       })
       .catch(() => setFavBundle(null))
       .finally(() => { setFavLoading(false); setFavRefresh(false); });
@@ -159,6 +169,17 @@ export default function NewsPage() {
       .catch(() => setArticles([]))
       .finally(() => setLoading(false));
   }, [chatId, tab, selectedTicker]);
+
+  const allOpen =
+    !!favBundle && favBundle.groups.length > 0 && favBundle.groups.every((g) => Boolean(openGroups[g.ticker]));
+
+  const toggleGroup = (ticker: string) =>
+    setOpenGroups((prev) => ({ ...prev, [ticker]: !Boolean(prev[ticker]) }));
+
+  const setAllGroups = (open: boolean) => {
+    if (!favBundle) return;
+    setOpenGroups(Object.fromEntries(favBundle.groups.map((g) => [g.ticker, open])));
+  };
 
   return (
     <Column gap="l">
@@ -267,22 +288,43 @@ export default function NewsPage() {
               <Text variant="label-default-xs" onBackground="neutral-weak">
                 Se actualiza 1 vez al día · {favBundle.groups.length} activos analizados
               </Text>
-              <button
-                onClick={() => setFavRefresh(true)}
-                className="liquid-btn"
-                style={{
-                  padding: "6px 12px",
-                  borderRadius: 6,
-                  border: "1px solid var(--brand-strong)",
-                  background: "var(--brand-alpha-weak)",
-                  color: "var(--brand-on-background-strong)",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                  fontSize: 12,
-                }}
-              >
-                ↻ Actualizar
-              </button>
+              <Row gap="s" vertical="center">
+                <button
+                  onClick={() => setAllGroups(!allOpen)}
+                  className="liquid-btn"
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: 6,
+                    border: "1px solid var(--neutral-alpha-medium)",
+                    background: "transparent",
+                    color: "var(--neutral-on-background-weak)",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    fontSize: 12,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  {allOpen ? "Contraer todo" : "Expandir todo"}
+                </button>
+                <button
+                  onClick={() => setFavRefresh(true)}
+                  className="liquid-btn"
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: 6,
+                    border: "1px solid var(--brand-strong)",
+                    background: "var(--brand-alpha-weak)",
+                    color: "var(--brand-on-background-strong)",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    fontSize: 12,
+                  }}
+                >
+                  ↻ Actualizar
+                </button>
+              </Row>
             </Row>
 
             {favBundle.macro && favBundle.macro.length > 0 && (
@@ -303,68 +345,99 @@ export default function NewsPage() {
               </Row>
             )}
 
-            {favBundle.groups.map((group) => (
-              <Reveal key={group.ticker} delay={0.05}>
-              <Column
-                gap="s"
-                fillWidth
-                padding="m"
-                radius="l"
-                className="liquid-glass-sm"
-                style={{
-                  border: "1px solid var(--neutral-alpha-weak)",
-                }}
-              >
-                <Row fillWidth horizontal="between" vertical="center">
-                  <Row gap="s" vertical="center">
-                    <Badge background="accent-alpha-weak" onBackground="accent-medium" paddingX="s" paddingY="xs">
-                      <Text variant="label-default-xs">{group.ticker}</Text>
-                    </Badge>
-                    <Text variant="label-strong-s">{group.name}</Text>
-                  </Row>
-                  <Text variant="label-default-xs" onBackground="neutral-weak">
-                    {group.type === "crypto" ? "Crypto" : group.type === "etf" ? "ETF" : "Acción"}
-                  </Text>
-                </Row>
-
-                {group.analysis && (
+            {favBundle.groups.map((group, gi) => {
+              const open = Boolean(openGroups[group.ticker]);
+              return (
+                <Reveal key={group.ticker} delay={Math.min(gi * 0.05, 0.3)}>
                   <Column
-                    gap="xs"
-                    padding="s"
-                    radius="m"
+                    gap="s"
                     fillWidth
+                    padding={open ? "m" : "xs"}
+                    radius="l"
+                    className="liquid-glass-sm"
                     style={{
-                      background: "var(--brand-alpha-weak)",
-                      border: "1px solid var(--brand-alpha-medium)",
+                      border: "1px solid var(--neutral-alpha-weak)",
                     }}
                   >
-                    <Row gap="s" vertical="center">
-                      <Badge background="brand-alpha-weak" onBackground="brand-medium" paddingX="s" paddingY="xs">
-                        <Text variant="label-default-xs">ANÁLISIS MACRO</Text>
-                      </Badge>
-                    </Row>
-                    <HighlightedText
-                      text={group.analysis}
+                    <button
+                      onClick={() => toggleGroup(group.ticker)}
+                      aria-expanded={open}
                       style={{
-                        fontSize: "var(--font-size-body-s)",
-                        color: "var(--neutral-on-background-strong)",
+                        background: "transparent",
+                        border: "none",
+                        width: "100%",
+                        textAlign: "left",
+                        cursor: "pointer",
+                        borderRadius: 10,
+                        padding: open ? "0 2px" : "8px 4px",
                       }}
-                    />
-                  </Column>
-                )}
+                    >
+                      <Row fillWidth horizontal="between" vertical="center">
+                        <Row gap="s" vertical="center" fillWidth>
+                          <Badge background="accent-alpha-weak" onBackground="accent-medium" paddingX="s" paddingY="xs">
+                            <Text variant="label-default-xs">{group.ticker}</Text>
+                          </Badge>
+                          <Text variant="label-strong-s">{group.name}</Text>
+                          {group.analysis && (
+                            <Badge background="brand-alpha-weak" onBackground="brand-medium" paddingX="xs" paddingY="xs">
+                              <Text variant="label-default-xs">IA</Text>
+                            </Badge>
+                          )}
+                        </Row>
+                        <Row gap="s" vertical="center">
+                          <Text variant="label-default-xs" onBackground="neutral-weak">
+                            {group.type === "crypto" ? "Crypto" : group.type === "etf" ? "ETF" : "Acción"} · {group.articles.length} noticias
+                          </Text>
+                          <Icon name={open ? "chevronUp" : "chevronDown"} size="s" onBackground="neutral-weak" />
+                        </Row>
+                      </Row>
+                    </button>
 
-                {group.articles.length > 0 ? (
-                  group.articles.map((article, i) => (
-                    <NewsCard key={`${group.ticker}-${article.url}-${i}`} article={article} />
-                  ))
-                ) : (
-                  <Text variant="body-default-s" onBackground="neutral-weak">
-                    Sin noticias recientes para {group.ticker}.
-                  </Text>
-                )}
-              </Column>
-              </Reveal>
-            ))}
+                    {open && (
+                      <Column gap="s" fillWidth>
+                        {group.analysis && (
+                          <Column
+                            gap="xs"
+                            padding="s"
+                            radius="m"
+                            fillWidth
+                            style={{
+                              background: "var(--brand-alpha-weak)",
+                              border: "1px solid var(--brand-alpha-medium)",
+                            }}
+                          >
+                            <Row gap="s" vertical="center">
+                              <Badge background="brand-alpha-weak" onBackground="brand-medium" paddingX="s" paddingY="xs">
+                                <Text variant="label-default-xs">ANÁLISIS MACRO</Text>
+                              </Badge>
+                            </Row>
+                            <HighlightedText
+                              text={group.analysis}
+                              style={{
+                                fontSize: "var(--font-size-body-s)",
+                                color: "var(--neutral-on-background-strong)",
+                              }}
+                            />
+                          </Column>
+                        )}
+
+                        {group.articles.length > 0 ? (
+                          group.articles.map((article, i) => (
+                            <Reveal key={`${group.ticker}-${article.url}-${i}`} delay={Math.min(i * 0.04, 0.2)}>
+                              <NewsCard article={article} />
+                            </Reveal>
+                          ))
+                        ) : (
+                          <Text variant="body-default-s" onBackground="neutral-weak">
+                            Sin noticias recientes para {group.ticker}.
+                          </Text>
+                        )}
+                      </Column>
+                    )}
+                  </Column>
+                </Reveal>
+              );
+            })}
           </Column>
         ) : (
           <Column fillWidth horizontal="center" padding="xl" gap="m">

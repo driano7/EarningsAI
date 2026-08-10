@@ -5,8 +5,12 @@
   border-radius: var(--radius-m);
 }
 
-/* Keep Select dropdowns above modal popup content */
-[data-dropdown="true"] {
+/* Keep Select dropdowns above modal popup content.
+   once-ui portals the dropdown to document.body with inline z-index: 9,
+   which sits below modal overlays (1500+) and the chart modal (2000).
+   Target the positioned portal element itself. */
+.dropdown-portal,
+.dropdown-portal[data-role="dropdown-portal"] {
   z-index: 3000 !important;
 }
 
@@ -111,6 +115,29 @@
   border-radius: var(--radius-m);
   border: 1px solid var(--neutral-alpha-medium);
   padding: var(--space-m);
+}
+
+/* ─── Global scroll reveal ──────────────────────────────── */
+.gsr-block {
+  opacity: 0;
+  transform: translateY(22px);
+  transition:
+    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.gsr-block.gsr-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gsr-block {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
 }
 
 .dashboard-header {

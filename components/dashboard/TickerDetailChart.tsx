@@ -7,7 +7,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Column, Row, Text, IconButton, Skeleton, Badge, Select } from "@once-ui-system/core";
+import { Column, Row, Text, IconButton, Skeleton, Badge } from "@once-ui-system/core";
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
@@ -164,22 +164,28 @@ export function TickerDetailChart({ ticker, type, onClose }: Props) {
             )}
           </Row>
           <Row gap="xs" vertical="center">
-            <Select
+            <select
               id="period-select"
-              options={PERIODS}
+              className="liquid-select"
               value={period}
-              onSelect={setPeriod}
-              placeholder="Temporalidad"
-              style={{ width: 100 }}
-            />
-            <Select
+              onChange={(e) => setPeriod(e.target.value)}
+              style={{ width: 100, height: 36, fontSize: 13 }}
+            >
+              {PERIODS.map((p) => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </select>
+            <select
               id="chart-type-select"
-              options={CHART_TYPES}
+              className="liquid-select"
               value={chartType}
-              onSelect={setChartType}
-              placeholder="Tipo"
-              style={{ width: 90 }}
-            />
+              onChange={(e) => setChartType(e.target.value as "line" | "area" | "bar")}
+              style={{ width: 90, height: 36, fontSize: 13 }}
+            >
+              {CHART_TYPES.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
             <IconButton icon="close" size="s" variant="tertiary" onClick={onClose} />
           </Row>
         </Row>

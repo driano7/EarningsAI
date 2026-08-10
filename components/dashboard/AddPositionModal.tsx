@@ -8,6 +8,7 @@
 
 import { useState, useEffect } from "react";
 import { Column, Flex, Text, Button, Input, Heading } from "@once-ui-system/core";
+import { Row } from "@once-ui-system/core";
 import { motion, AnimatePresence } from "framer-motion";
 import type { PortfolioPosition } from "@/lib/types";
 
@@ -34,10 +35,15 @@ export default function AddPositionModal({
   const [quantity, setQuantity] = useState("");
   const [buyDate, setBuyDate] = useState(new Date().toISOString().split("T")[0]);
   const [notes, setNotes] = useState("");
+  const [yieldRate, setYieldRate] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
+  const [conditions, setConditions] = useState("");
 
   const [sellPrice, setSellPrice] = useState("");
   const [sellQuantity, setSellQuantity] = useState("");
   const [sellDate, setSellDate] = useState(new Date().toISOString().split("T")[0]);
+
+  const isSavings = type === "sofipo" || type === "cetes";
 
   useEffect(() => {
     if (editPosition) {
@@ -51,6 +57,9 @@ export default function AddPositionModal({
         setQuantity(String(editPosition.quantity));
         setBuyDate(editPosition.buyDate.split("T")[0]);
         setNotes(editPosition.notes || "");
+        setYieldRate(editPosition.yieldRate !== undefined && editPosition.yieldRate !== null ? String(editPosition.yieldRate) : "");
+        setExpiresAt(editPosition.expiresAt || "");
+        setConditions(editPosition.conditions || "");
       }
     } else {
       setTicker("");
@@ -59,6 +68,9 @@ export default function AddPositionModal({
       setQuantity("");
       setBuyDate(new Date().toISOString().split("T")[0]);
       setNotes("");
+      setYieldRate("");
+      setExpiresAt("");
+      setConditions("");
     }
   }, [editPosition, asSell, open]);
 
@@ -77,9 +89,12 @@ export default function AddPositionModal({
       ticker: ticker.toUpperCase(),
       type: type as "stock" | "etf" | "crypto" | "sofipo" | "cetes",
       buyPrice: Number(buyPrice),
-      quantity: Number(quantity),
+      quantity: isSavings ? 1 : Number(quantity),
       buyDate,
       notes,
+      yieldRate: yieldRate !== "" ? Number(yieldRate) : undefined,
+      expiresAt: expiresAt || undefined,
+      conditions: conditions || undefined,
     });
   }
 
@@ -193,17 +208,50 @@ export default function AddPositionModal({
                       placeholder="0.00"
                       style={{ flex: 1 }}
                     />
-                    <Input
-                      id="pos-quantity"
-                      label="Cantidad"
-                      type="number"
-                      step="0.01"
-                      value={quantity}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuantity(e.target.value)}
-                      placeholder="0"
-                      style={{ flex: 1 }}
-                    />
+                    {!isSavings && (
+                      <Input
+                        id="pos-quantity"
+                        label="Cantidad"
+                        type="number"
+                        step="0.01"
+                        value={quantity}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuantity(e.target.value)}
+                        placeholder="0"
+                        style={{ flex: 1 }}
+                      />
+                    )}
                   </Flex>
+                  {isSavings && (
+                    <Column gap="m">
+                      <Row gap="m">
+                        <Input
+                          id="pos-yield-rate"
+                          label="Rendimiento anual (%)"
+                          type="number"
+                          step="0.01"
+                          value={yieldRate}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setYieldRate(e.target.value)}
+                          placeholder="Ej: 12.5"
+                          style={{ flex: 1 }}
+                        />
+                        <Input
+                          id="pos-expires-at"
+                          label="Vencimiento"
+                          type="date"
+                          value={expiresAt}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setExpiresAt(e.target.value)}
+                          style={{ flex: 1 }}
+                        />
+                      </Row>
+                      <Input
+                        id="pos-conditions"
+                        label="Condiciones (opcional)"
+                        value={conditions}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConditions(e.target.value)}
+                        placeholder="Ej: Monto lim. $150k, retiros diarios 10%..."
+                      />
+                    </Column>
+                  )}
                   <Input
                     id="pos-buy-date"
                     label="Fecha de compra"

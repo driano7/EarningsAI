@@ -56,6 +56,9 @@ export async function POST(req: NextRequest) {
     quantity: Number(body.quantity),
     buyDate: body.buyDate,
     notes: body.notes || "",
+    yieldRate: body.yieldRate !== undefined ? Number(body.yieldRate) : undefined,
+    expiresAt: body.expiresAt || undefined,
+    conditions: body.conditions || undefined,
     createdAt: new Date().toISOString(),
   };
 
@@ -80,6 +83,9 @@ export async function PUT(req: NextRequest) {
   if (body.quantity) updates.quantity = Number(body.quantity);
   if (body.buyDate) updates.buyDate = body.buyDate;
   if (body.notes !== undefined) updates.notes = body.notes;
+  if (body.yieldRate !== undefined) updates.yieldRate = Number(body.yieldRate);
+  if (body.expiresAt !== undefined) updates.expiresAt = body.expiresAt;
+  if (body.conditions !== undefined) updates.conditions = body.conditions;
 
   const ok = await updatePosition(chatId, body.id, updates);
   if (!ok) {

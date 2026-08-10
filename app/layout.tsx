@@ -13,6 +13,7 @@ import classNames from "classnames";
 import { Flex, ThemeInit } from "@once-ui-system/core";
 import { fonts, style, dataStyle } from "@/resources/once-ui.config";
 import { Providers } from "@/components/Providers";
+import { GlobalScrollReveal } from "@/components/GlobalScrollReveal";
 
 export default function RootLayout({
   children,
@@ -54,6 +55,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡️📈</text></svg>" />
       </head>
       <Providers>
+        <GlobalScrollReveal />
         <Flex as="body" fillWidth margin="0" padding="0" background="page">
           {children}
         </Flex>

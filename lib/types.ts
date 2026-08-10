@@ -29,6 +29,9 @@ export interface PortfolioPosition {
   quantity: number;
   buyDate: string;
   notes?: string;
+  yieldRate?: number;
+  expiresAt?: string;
+  conditions?: string;
   createdAt: string;
 }
 

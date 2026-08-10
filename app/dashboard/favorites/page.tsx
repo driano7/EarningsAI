@@ -8,6 +8,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Column, Row, Heading, Text, Badge, Card, Button, Input, IconButton, Grid } from "@once-ui-system/core";
+import { motion } from "framer-motion";
 import { formatPercent } from "@/lib/formatFinance";
 import { getChartLineColor } from "@/lib/chartColors";
 import { TickerDetailChart } from "@/components/dashboard/TickerDetailChart";
@@ -22,7 +23,17 @@ function Sparkline({ data, color, width = 120, height = 28 }: { data: number[]; 
   const points = data.map((v, i) => `${(i / (data.length - 1)) * width},${height - ((v - min) / range) * (height - 4) - 2}`).join(" ");
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ flexShrink: 0 }}>
-      <polyline points={points} fill="none" stroke={color || "#22d3ee"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+      <motion.polyline
+        points={points}
+        fill="none"
+        stroke={color || "#22d3ee"}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{ pathLength: 1, opacity: 1 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+      />
     </svg>
   );
 }

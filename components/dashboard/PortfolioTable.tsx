@@ -215,7 +215,8 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
               <Th onClick={() => toggleSort("ticker")}>Nombre{sortIndicator("ticker")}</Th>
               <Th>Tipo</Th>
               <Th>Monto</Th>
-              <Th>Cantidad</Th>
+              <Th>Vence</Th>
+              <Th>Condiciones</Th>
               <Th onClick={() => toggleSort("currentPrice")}>Valor actual{sortIndicator("currentPrice")}</Th>
               <Th onClick={() => toggleSort("pnlPercent")}>Rendimiento{sortIndicator("pnlPercent")}</Th>
               <Th>Acciones</Th>
@@ -224,7 +225,7 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ padding: 24, textAlign: "center" }}>
+                <td colSpan={8} style={{ padding: 24, textAlign: "center" }}>
                   <Text variant="body-default-s" onBackground="neutral-weak">
                     No hay posiciones que coincidan con los filtros.
                   </Text>
@@ -258,7 +259,18 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
                       <Text variant="body-default-m">${pos.buyPrice.toFixed(2)}</Text>
                     </td>
                     <td style={{ padding: "12px 16px" }}>
-                      <Text variant="body-default-m">{pos.quantity}</Text>
+                      <Text variant="body-default-m">
+                        {savings && pos.expiresAt ? formatDate(pos.expiresAt) : "—"}
+                      </Text>
+                    </td>
+                    <td style={{ padding: "12px 16px" }}>
+                      {savings && pos.conditions ? (
+                        <Text variant="body-default-xs" onBackground="neutral-weak">
+                          {pos.conditions}
+                        </Text>
+                      ) : (
+                        <Text variant="body-default-m">—</Text>
+                      )}
                     </td>
                     <td style={{ padding: "12px 16px" }}>
                       <Text variant="body-default-m">
@@ -267,7 +279,13 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
                     </td>
                     <td style={{ padding: "12px 16px" }}>
                       {savings ? (
-                        <Text variant="body-default-s" onBackground="neutral-weak">—</Text>
+                        pos.yieldRate !== undefined && pos.yieldRate !== null ? (
+                          <Text variant="body-default-m" style={{ color: "var(--success-medium)", fontWeight: 600 }}>
+                            {Number(pos.yieldRate).toFixed(2)}%
+                          </Text>
+                        ) : (
+                          <Text variant="body-default-s" onBackground="neutral-weak">—</Text>
+                        )
                       ) : (
                         <Column gap="xs">
                           <Text variant="body-default-m" style={{ color: pnlColor, fontWeight: 600 }}>
@@ -311,6 +329,12 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
       </Flex>
     </Column>
   );
+}
+
+function formatDate(iso: string): string {
+  const d = new Date(iso.includes("T") ? iso : `${iso}T00:00:00`);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 function Th({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
