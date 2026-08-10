@@ -279,7 +279,10 @@ async function saveSummary(chatId: string, date: string, content: string): Promi
 export async function getSummaryHistory(chatId: string): Promise<DailySummary[]> {
   try {
     const pattern = `supernota:${chatId}:*`;
-    const keys = await kv.keys(pattern);
+    const keys: string[] = [];
+    for await (const key of kv.scanIterator({ match: pattern, count: 100 })) {
+      keys.push(key);
+    }
 
     if (keys.length === 0) return [];
 
@@ -293,7 +296,16 @@ export async function getSummaryHistory(chatId: string): Promise<DailySummary[]>
     return entries
       .filter((e): e is DailySummary => e !== null)
       .sort((a, b) => b.createdAt - a.createdAt);
-  } catch {
+  } catch (err) {
+    console.error(`[news-summary] getSummaryHistory failed:`, err);
     return [];
+  }
+}
+
+export async function getSummaryForDate(chatId: string, date: string): Promise<DailySummary | null> {
+  try {
+    return await kv.get<DailySummary>(`supernota:${chatId}:${date}`);
+  } catch {
+    return null;
   }
 }

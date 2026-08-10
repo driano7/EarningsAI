@@ -12,10 +12,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useChatbot } from "@/hooks/useChatbot";
 
 const QUICK_ACTIONS = [
-  { label: "Reporte", message: "Dame el reporte de earnings de mis acciones" },
-  { label: "Resumen", message: "Dame el resumen de mis finanzas de este mes" },
-  { label: "Portafolio", message: "Muéstrame mi portafolio con P&L actual" },
-  { label: "Hype", message: "Qué acciones tienen más hype esta semana" },
+  { label: "Reporte", message: "Dame el reporte de earnings de mis acciones", preset: "reporte" },
+  { label: "Resumen", message: "Dame el resumen de mis finanzas de este mes", preset: "resumen" },
+  { label: "Portafolio", message: "Muéstrame mi portafolio con P&L actual", preset: "portafolio" },
+  { label: "Hype", message: "Qué acciones tienen más hype esta semana", preset: "hype" },
+  { label: "Agregar valor", message: "Quiero agregar un valor a mi watchlist", preset: "agregar" },
 ];
 
 interface FloatingAssistantProps {
@@ -43,7 +44,7 @@ export function FloatingAssistant({ open: externalOpen, onToggle }: FloatingAssi
     setChatId(localStorage.getItem("quartly_chatId") || "default");
   }, []);
 
-  const { messages, isLoading, sendMessage, clearChat } = useChatbot(chatId);
+  const { messages, isLoading, sendMessage, clearChat, quota } = useChatbot(chatId);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -188,7 +189,7 @@ export function FloatingAssistant({ open: externalOpen, onToggle }: FloatingAssi
               {QUICK_ACTIONS.map((a) => (
                 <button
                   key={a.label}
-                  onClick={() => sendMessage(a.message)}
+                  onClick={() => sendMessage(a.message, a.preset)}
                   className="liquid-btn"
                   style={{
                     whiteSpace: "nowrap",
@@ -208,11 +209,30 @@ export function FloatingAssistant({ open: externalOpen, onToggle }: FloatingAssi
               ))}
             </Row>
 
+            {(quota.exhausted || (quota.remaining > 0 && quota.remaining <= 3)) && (
+              <Row
+                paddingX="m"
+                paddingY="xs"
+                gap="xs"
+                vertical="center"
+                style={{
+                  background: quota.exhausted ? "var(--danger-alpha-weak)" : "var(--brand-alpha-weak)",
+                  borderBottom: "1px solid var(--neutral-alpha-weak)",
+                  flexShrink: 0,
+                }}
+              >
+                <Icon name={quota.exhausted ? "warning" : "info"} size="xs" />
+                <Text variant="label-default-xs" onBackground={quota.exhausted ? "danger-strong" : "brand-medium"}>
+                  {quota.exhausted ? "Cuota agotada. Usa los botones rápidos." : `Quedan ${quota.remaining} análisis hoy.`}
+                </Text>
+              </Row>
+            )}
+
             <Column
               padding="s"
               paddingX="m"
               gap="s"
-              style={{ overflowY: "auto", flex: 1, minHeight: 0 }}
+              style={{ overflowY: "auto", flex: 1, minHeight: 0, background: "var(--neutral-background)" }}
             >
               {messages.map((msg) => (
                 <Row

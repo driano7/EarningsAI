@@ -12,6 +12,7 @@ import {
   LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { CHART_GLASS_STYLE } from "@/lib/chartColors";
+import { AnimatedDot } from "@/components/charts/AnimatedDot";
 
 interface HistoricalData {
   date: string;
@@ -88,12 +89,12 @@ export function TickerDetailChart({ ticker, type, onClose }: Props) {
     : null;
 
   const colorMap = { stock: "brand", etf: "accent", crypto: "brand" } as const;
-  const lineColor = change !== null && change >= 0 ? "var(--success-strong)" : "var(--danger-strong)";
-  const resolvedFill = change === null
+  const lineColor = change === null
     ? "#94a3b8"
     : change >= 0
       ? "#22c55e"
       : "#ef4444";
+  const gridColor = "rgba(255,255,255,0.05)";
 
   return (
     <div
@@ -195,7 +196,7 @@ export function TickerDetailChart({ ticker, type, onClose }: Props) {
               <ResponsiveContainer width="100%" height={400}>
                 {chartType === "bar" ? (
                   <BarChart data={data}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--neutral-alpha-weak)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
                     <XAxis dataKey="date" tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 10 }} interval="preserveStartEnd" />
                     <YAxis tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 10 }} domain={["auto", "auto"]} />
                     <Tooltip
@@ -210,11 +211,11 @@ export function TickerDetailChart({ ticker, type, onClose }: Props) {
                       }}
                       formatter={(value) => [`$${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, ticker]}
                     />
-                    <Bar dataKey="value" fill={resolvedFill} radius={[4, 4, 0, 0]} maxBarSize={40} />
+                    <Bar dataKey="value" fill={lineColor} radius={[4, 4, 0, 0]} maxBarSize={40} />
                   </BarChart>
                 ) : chartType === "area" ? (
                   <AreaChart data={data}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--neutral-alpha-weak)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
                     <XAxis dataKey="date" tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 10 }} interval="preserveStartEnd" />
                     <YAxis tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 10 }} domain={["auto", "auto"]} />
                     <Tooltip
@@ -230,11 +231,18 @@ export function TickerDetailChart({ ticker, type, onClose }: Props) {
                       formatter={(value) => [`$${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, ticker]}
                     />
                     <Area type="monotone" dataKey="value" stroke={lineColor} fill={lineColor} fillOpacity={0.2} />
-                    <Line type="monotone" dataKey="value" stroke={lineColor} strokeWidth={2} dot={false} />
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke={lineColor}
+                      strokeWidth={2}
+                      dot={(dotProps) => <AnimatedDot {...(dotProps as object)} fill={lineColor} />}
+                      activeDot={(dotProps) => <AnimatedDot {...(dotProps as object)} fill={lineColor} />}
+                    />
                   </AreaChart>
                 ) : (
                   <LineChart data={data}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--neutral-alpha-weak)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
                     <XAxis dataKey="date" tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 10 }} interval="preserveStartEnd" />
                     <YAxis tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 10 }} domain={["auto", "auto"]} />
                     <Tooltip
@@ -249,7 +257,14 @@ export function TickerDetailChart({ ticker, type, onClose }: Props) {
                       }}
                       formatter={(value) => [`$${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, ticker]}
                     />
-                    <Line type="monotone" dataKey="value" stroke={lineColor} strokeWidth={2} dot={false} />
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke={lineColor}
+                      strokeWidth={2}
+                      dot={(dotProps) => <AnimatedDot {...(dotProps as object)} fill={lineColor} />}
+                      activeDot={(dotProps) => <AnimatedDot {...(dotProps as object)} fill={lineColor} />}
+                    />
                   </LineChart>
                 )}
               </ResponsiveContainer>

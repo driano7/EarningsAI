@@ -20,6 +20,17 @@ Quartly is a Telegram bot that delivers earnings data, financial analysis, and m
 - **Dropdown menus behind** - Fixed Select dropdowns clipping behind modal components
 - **Icon warnings** - Replaced invalid icon "trash2" with valid icon "trash" in bot interface
 
+### Features (v1.1)
+
+- **Chatbot daily batch** - The quick buttons (Reporte, Resumen, Portafolio, Hype) generate all answers with a single daily AI request, cached in KV and reused the rest of the day; free-typed questions still get on-demand AI
+- **Agregar/Modificar valor** - New chatbot button to add tickers to the watchlist via chat
+- **Quota warnings** - Shows remaining daily AI analysis and warns when about to run out
+- **Favoritos + Análisis** - News tab showing 2 recent articles per watchlist ticker plus a per-company analysis driven by macro indicators (Fed, inflation, unemployment, VIX, oil, DXY, curve)
+- **Supernota handling** - Underlines key conclusions (semáforo, macro, catalizadores) in the brand accent color; history fetches all stored notes and regenerates today's on demand if missing
+- **Price charts redrawn** - Line/area/bar charts now use resolved hex colors (visible like the macro charts) with animated dots
+- **Ticker autocomplete** - Add-favorite inputs show a searchable dropdown across S&P 500, ETFs, custom tickers and cryptos
+- **Scroll animations** - Cards and news items reveal with stagger on scroll, and line charts animate dots (Xoco KDS style)
+
 ### Key Features
 
 - **Watchlist Management** — Track up to 30 stocks and ETFs via Telegram inline search

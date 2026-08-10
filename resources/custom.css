@@ -5,6 +5,16 @@
   border-radius: var(--radius-m);
 }
 
+/* Keep Select dropdowns above modal popup content */
+[data-dropdown="true"] {
+  z-index: 3000 !important;
+}
+
+/* Solid chat bubbles (no transparency) */
+.chat-bubble-solid {
+  background: var(--neutral-background) !important;
+}
+
 .liquid-glass {
   background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(40px) saturate(1.8);

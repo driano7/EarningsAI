@@ -1,0 +1,14 @@
+# EarningsAI Quant — backend del AI Strategy Visualizer
+# Instalar:  pip install -r requirements.txt
+#
+# `pandas_ta` (fork mantenido) sustituye al antiguo `pandas-ta` 0.3.14b0,
+# que no se puede compilar con setuptools/pip modernos. El import sigue
+# siendo `import pandas_ta`, igual que el spec del indicador engine.
+
+fastapi>=0.110
+uvicorn[standard]>=0.30
+pydantic>=2.6
+pandas>=2.2
+pandas_ta>=0.4.0
+httpx>=0.27
+python-dotenv>=1.0

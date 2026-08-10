@@ -8,6 +8,7 @@
 
 import { Column, Row, Text, Badge, IconButton } from "@once-ui-system/core";
 import { useState } from "react";
+import { HighlightedText } from "./HighlightedText";
 
 interface DailySummaryCardProps {
   date: string;
@@ -124,27 +125,35 @@ export function DailySummaryCard({ date, content, createdAt, isLatest }: DailySu
           ? sections.map((section, i) => (
               <Column key={i} gap="xs" fillWidth>
                 {section.title && (
-                  <Text variant="label-default-s" onBackground="brand-medium">
+                  <Text
+                    variant="label-default-s"
+                    onBackground="brand-medium"
+                    style={
+                      /(SEM|VERED|CONCLUS|CATALIZ|CIERRE)/i.test(section.title)
+                        ? { textDecoration: "underline" }
+                        : undefined
+                    }
+                  >
                     {section.title}
                   </Text>
                 )}
-                <Text
-                  variant="body-default-s"
-                  onBackground="neutral-weak"
-                  style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}
-                >
-                  {section.body}
-                </Text>
+                <HighlightedText
+                  text={section.body}
+                  style={{
+                    fontSize: "var(--font-size-body-s)",
+                    color: "var(--neutral-on-background-weak)",
+                  }}
+                />
               </Column>
             ))
           : (
-              <Text
-                variant="body-default-s"
-                onBackground="neutral-weak"
-                style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}
-              >
-                {content}
-              </Text>
+              <HighlightedText
+                text={content}
+                style={{
+                  fontSize: "var(--font-size-body-s)",
+                  color: "var(--neutral-on-background-weak)",
+                }}
+              />
             )}
       </Column>
 

@@ -5,30 +5,30 @@
  */
 
 export const CHART_COLORS = {
-  positive:  "var(--emerald-400)",
-  negative:  "var(--red-400)",
-  neutral:   "var(--neutral-400)",
-  brand:     "var(--cyan-400)",
-  accent:    "var(--emerald-300)",
-  muted:     "var(--neutral-600)",
+  positive:  "#34d399",
+  negative:  "#f87171",
+  neutral:   "#a1a1aa",
+  brand:     "#22d3ee",
+  accent:    "#6ee7b7",
+  muted:     "#52525b",
 } as const;
 
 export const CATEGORY_PALETTE = [
-  "var(--cyan-400)",
-  "var(--emerald-400)",
-  "var(--blue-400)",
-  "var(--violet-400)",
-  "var(--orange-400)",
-  "var(--red-400)",
-  "var(--yellow-400)",
-  "var(--pink-400)",
-  "var(--teal-400)",
-  "var(--indigo-400)",
+  "#22d3ee",
+  "#34d399",
+  "#60a5fa",
+  "#a78bfa",
+  "#fb923c",
+  "#f87171",
+  "#facc15",
+  "#f472b6",
+  "#2dd4bf",
+  "#818cf8",
 ] as const;
 
-export const SPARKLINE_COLOR_POSITIVE = "var(--emerald-400)";
-export const SPARKLINE_COLOR_NEGATIVE = "var(--red-400)";
-export const SPARKLINE_COLOR_DEFAULT  = "var(--cyan-400)";
+export const SPARKLINE_COLOR_POSITIVE = "#34d399";
+export const SPARKLINE_COLOR_NEGATIVE = "#f87171";
+export const SPARKLINE_COLOR_DEFAULT  = "#22d3ee";
 
 export function getChartLineColor(change: number | null): string {
   if (change === null) return CHART_COLORS.brand;

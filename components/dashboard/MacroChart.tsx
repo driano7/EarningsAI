@@ -13,6 +13,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
 import { getRandomBarColor, CHART_GLASS_STYLE } from "@/lib/chartColors";
+import { AnimatedDot } from "@/components/charts/AnimatedDot";
 
 interface MacroHistorical {
   date: string;
@@ -224,7 +225,14 @@ export function MacroChart({ seriesId, label, unit, onClose }: Props) {
                       formatter={(value) => [`${Number(value).toFixed(3)} ${unit}`, label]}
                     />
                     <Area type="monotone" dataKey="value" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.2} />
-                    <Line type="monotone" dataKey="value" stroke="#06b6d4" strokeWidth={2} dot={false} />
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#06b6d4"
+                      strokeWidth={2}
+                      dot={(dotProps) => <AnimatedDot {...(dotProps as object)} fill="#06b6d4" />}
+                      activeDot={(dotProps) => <AnimatedDot {...(dotProps as object)} fill="#06b6d4" />}
+                    />
                   </AreaChart>
                 ) : (
                   <LineChart data={data}>
@@ -250,7 +258,14 @@ export function MacroChart({ seriesId, label, unit, onClose }: Props) {
                       }}
                       formatter={(value) => [`${Number(value).toFixed(3)} ${unit}`, label]}
                     />
-                    <Line type="monotone" dataKey="value" stroke="#06b6d4" strokeWidth={2} dot={false} />
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#06b6d4"
+                      strokeWidth={2}
+                      dot={(dotProps) => <AnimatedDot {...(dotProps as object)} fill="#06b6d4" />}
+                      activeDot={(dotProps) => <AnimatedDot {...(dotProps as object)} fill="#06b6d4" />}
+                    />
                   </LineChart>
                 )}
               </ResponsiveContainer>

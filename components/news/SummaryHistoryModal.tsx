@@ -8,6 +8,7 @@
 
 import { Column, Row, Text, IconButton, Badge, Card } from "@once-ui-system/core";
 import { useState, useEffect } from "react";
+import { HighlightedText } from "./HighlightedText";
 
 interface SummaryHistoryModalProps {
   isOpen: boolean;
@@ -212,13 +213,13 @@ export function SummaryHistoryModal({ isOpen, onClose, chatId }: SummaryHistoryM
                           onClick={(e: React.MouseEvent) => { e.stopPropagation(); setExpandedDate(null); }}
                         />
                       </Row>
-                      <Text
-                        variant="body-default-s"
-                        onBackground="neutral-weak"
-                        style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}
-                      >
-                        {summary.content}
-                      </Text>
+                      <HighlightedText
+                        text={summary.content}
+                        style={{
+                          fontSize: "var(--font-size-body-s)",
+                          color: "var(--neutral-on-background-weak)",
+                        }}
+                      />
                     </Column>
                   )}
                 </Card>

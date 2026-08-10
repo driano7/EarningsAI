@@ -113,7 +113,7 @@ ${c.epsHistory}`;
       "X-Title": "Quartly Bot",
     },
     body: JSON.stringify({
-      model: "meta-llama/llama-4-maverick:free",
+      model: "google/gemini-3.1-flash-lite",
       temperature: 0.3,
       max_tokens: 2500,
       messages: [
@@ -142,7 +142,7 @@ function parseBatchResponse(content: string, favReports: CompanyData[]): ParsedB
     const colonIdx = section.indexOf("---");
     if (colonIdx === -1) continue;
 
-    const name = section.substring(0, colonIdx).trim();
+    let name = section.substring(0, colonIdx).trim();
     const body = section.substring(colonIdx + 3).trim();
 
     if (name === "HYPE") {
@@ -150,6 +150,8 @@ function parseBatchResponse(content: string, favReports: CompanyData[]): ParsedB
     } else if (name.startsWith("FAV_")) {
       const ticker = name.substring(4);
       result.favReports[ticker] = body;
+    } else if (name === name.toUpperCase() && name.length <= 5) {
+      result.favReports[name] = body;
     }
   }
 

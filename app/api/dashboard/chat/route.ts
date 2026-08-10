@@ -5,7 +5,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getUserStocks, getUserEtfs, getUserCryptos, getFinanceTransactions } from "@/lib/kv";
+import { kv } from "@vercel/kv";
+import { getUserStocks, getUserEtfs, getUserCryptos, getFinanceTransactions, addStock } from "@/lib/kv";
 import { getPositions } from "@/lib/kv-portfolio";
 import {
   getEarningsCalendar, getEarningsHistory, getRecommendationTrends,
@@ -14,9 +15,10 @@ import {
 import { getSummary } from "@/lib/finance";
 import { getPriceVariations } from "@/lib/price-variations";
 import { generateBatchReport } from "@/lib/openrouter";
-import { checkAndConsumeQuota } from "@/lib/quota";
+import { checkAndConsumeQuota, getRemainingQuota } from "@/lib/quota";
 import { buildHypeRanking } from "@/lib/hype";
 import { getCryptoQuote } from "@/lib/coingecko";
+import { getPrebuilt, getPresetReplyMessage, LOW_QUOTA_THRESHOLD, type ChatPreset } from "@/lib/chatbot-batch";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -31,6 +33,14 @@ const CRYPTO_TICKERS = new Set(["BTC", "ETH", "SOL", "ADA", "DOT", "AVAX", "MATI
 function parseTicker(message: string): string | null {
   const match = message.match(/\b([A-Z]{1,5})\b/);
   return match ? match[1].toUpperCase() : null;
+}
+
+function withQuota(reply: string, quotaRemaining: number): string {
+  if (quotaRemaining === 0) return reply;
+  if (quotaRemaining <= LOW_QUOTA_THRESHOLD) {
+    return `⚠️ Te quedan ${quotaRemaining} análisis con IA por hoy.\n\n${reply}`;
+  }
+  return reply;
 }
 
 async function buildUserContext(chatId: string): Promise<string> {
@@ -52,10 +62,11 @@ async function buildUserContext(chatId: string): Promise<string> {
 
 export async function POST(req: NextRequest) {
   try {
-    const { message, chatId, history } = (await req.json()) as {
+    const { message, chatId, history, preset } = (await req.json()) as {
       message: string;
       chatId: string;
       history: ChatMessage[];
+      preset?: ChatPreset;
     };
 
     if (!chatId || !message) {
@@ -63,6 +74,62 @@ export async function POST(req: NextRequest) {
     }
 
     const lower = message.toLowerCase();
+
+    /* ── PRESETS: una solicitud diaria en caché para los 4 botones ── */
+    if (preset && preset !== "agregar") {
+      const result = await getPrebuilt(chatId, preset);
+      const remaining = await getRemainingQuota();
+      return NextResponse.json({
+        reply: withQuota(result.reply, result.quotaRemaining),
+        quotaRemaining: result.quotaRemaining,
+        quotaExhausted: result.quotaExhausted,
+        fromCache: result.fromCache,
+        timestamp: new Date().toISOString(),
+        _lowQuota: remaining > 0 && remaining <= LOW_QUOTA_THRESHOLD,
+      });
+    }
+
+    /* ── PRESET "AGREGAR / MODIFICAR VALOR" ──────────────────────── */
+    if (preset === "agregar") {
+      await kv.set(`chatbot:pending:add:${chatId}`, 1, { ex: 600 });
+      return NextResponse.json({
+        reply: "¿Qué valor quieres agregar o modificar? Escribe el ticker (ej. AAPL, MSFT, SPY).\n\nSi ya está en tu watchlist lo confirmamos; si no, se agrega automáticamente.",
+        quotaRemaining: await getRemainingQuota(),
+        quotaExhausted: false,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    /* ── FLUJO "AGREGAR VALOR" (siguiente mensaje tras el botón) ─── */
+    const pendingAdd = await kv.get(`chatbot:pending:add:${chatId}`);
+    if (pendingAdd) {
+      const remaining = await getRemainingQuota();
+      const ticker = parseTicker(message);
+      if (!ticker) {
+        return NextResponse.json({
+          reply: "Escribe un ticker válido (ej. AAPL). Puedo agregarlo a tu watchlist.",
+          quotaRemaining: remaining,
+          quotaExhausted: remaining <= 0,
+          timestamp: new Date().toISOString(),
+        });
+      }
+      await kv.del(`chatbot:pending:add:${chatId}`);
+      const { ok, error } = await addStock(chatId, ticker);
+      if (!ok) {
+        return NextResponse.json({
+          reply: error || "No se pudo agregar el valor.",
+          quotaRemaining: remaining,
+          quotaExhausted: remaining <= 0,
+          timestamp: new Date().toISOString(),
+        });
+      }
+      return NextResponse.json({
+        reply: `✅ *${ticker}* agregado a tu watchlist.\n\nYa lo verás en la sección Favoritos con su gráfica y noticias.`,
+        quotaRemaining: remaining,
+        quotaExhausted: remaining <= 0,
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     /* ── A) EARNINGS / REPORT ─────────────────────────────────── */
     if (lower.includes("reporte") || lower.includes("earnings") || lower.includes("report") || lower.includes("cuándo reporta") || lower.includes("cuando reporta")) {
@@ -116,7 +183,13 @@ export async function POST(req: NextRequest) {
 
       const report = await generateBatchReport({ favReports: companyDataArray, hypeRanking: null });
       const reply = Object.values(report.favReports).join("\n\n");
-      return NextResponse.json({ reply: reply || "No se pudo generar el reporte." });
+      const remaining = await getRemainingQuota();
+      return NextResponse.json({
+        reply: withQuota(reply || "No se pudo generar el reporte.", remaining),
+        quotaRemaining: remaining,
+        quotaExhausted: remaining <= 0,
+        timestamp: new Date().toISOString(),
+      });
     }
 
     /* ── B) SUMMARY / FINANZAS ─────────────────────────────────── */
@@ -170,8 +243,12 @@ export async function POST(req: NextRequest) {
       }
       const top = hype.top5.map((h, i) => `${i + 1}. *${h.ticker}* — ${h.name} — Score: ${h.hypeScore}/100`).join("\n");
       const bottom = hype.bottom5.map((h, i) => `${i + 1}. *${h.ticker}* — ${h.name} — Score: ${h.hypeScore}/100`).join("\n");
+      const remaining = await getRemainingQuota();
       return NextResponse.json({
-        reply: `🔥 *Top 5 Hype de la Semana*\n${top}\n\n📉 *Bottom 5*\n${bottom}`,
+        reply: withQuota(`🔥 *Top 5 Hype de la Semana*\n${top}\n\n📉 *Bottom 5*\n${bottom}`, remaining),
+        quotaRemaining: remaining,
+        quotaExhausted: remaining <= 0,
+        timestamp: new Date().toISOString(),
       });
     }
 
@@ -207,10 +284,11 @@ export async function POST(req: NextRequest) {
     }
 
     /* ── G) DEFAULT — AI FREE FORM ────────────────────────────── */
-    const { allowed } = await checkAndConsumeQuota(1);
+    const { allowed, remaining: remainingAfter } = await checkAndConsumeQuota(1);
     if (!allowed) {
-      return NextResponse.json({ reply: QUOTA_MSG });
+      return NextResponse.json({ reply: QUOTA_MSG, quotaRemaining: 0, quotaExhausted: true, timestamp: new Date().toISOString() });
     }
+    const remaining = remainingAfter;
 
     const userContext = await buildUserContext(chatId);
     const systemPrompt = `Eres Quartly, analista bursátil personal en español. Tienes acceso a datos del usuario. Responde de forma concisa, máximo 3 párrafos.
@@ -239,12 +317,22 @@ ${userContext}`;
     if (!orRes.ok) {
       const errBody = await orRes.text().catch(() => "unknown");
       console.error("OpenRouter error:", orRes.status, errBody);
-      return NextResponse.json({ reply: "Error al contactar el asistente AI. Intenta de nuevo." });
+      return NextResponse.json({
+        reply: "Error al contactar el asistente AI. Intenta de nuevo.",
+        quotaRemaining: remaining,
+        quotaExhausted: remaining <= 0,
+        timestamp: new Date().toISOString(),
+      });
     }
 
     const orData = (await orRes.json()) as { choices?: Array<{ message: { content: string } }> };
     const reply = orData.choices?.[0]?.message?.content || "No pude procesar tu consulta.";
-    return NextResponse.json({ reply, timestamp: new Date().toISOString() });
+    return NextResponse.json({
+      reply: withQuota(reply, remaining),
+      quotaRemaining: remaining,
+      quotaExhausted: remaining <= 0,
+      timestamp: new Date().toISOString(),
+    });
   } catch (err) {
     console.error("Chat handler error:", err);
     const errorMsg = err instanceof Error ? err.message : String(err);

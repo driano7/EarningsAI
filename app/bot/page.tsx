@@ -14,10 +14,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useChatbot } from "@/hooks/useChatbot";
 
 const QUICK_ACTIONS = [
-  { label: "📊 Mi reporte", message: "Dame el reporte de earnings de mis acciones" },
-  { label: "💰 Resumen mes", message: "Dame el resumen de mis finanzas de este mes" },
-  { label: "📈 Portafolio", message: "Muéstrame mi portafolio con P&L actual" },
-  { label: "🔥 Hype Ranking", message: "Qué acciones tienen más hype esta semana" },
+  { label: "📊 Mi reporte", message: "Dame el reporte de earnings de mis acciones", preset: "reporte" },
+  { label: "💰 Resumen mes", message: "Dame el resumen de mis finanzas de este mes", preset: "resumen" },
+  { label: "📈 Portafolio", message: "Muéstrame mi portafolio con P&L actual", preset: "portafolio" },
+  { label: "🔥 Hype Ranking", message: "Qué acciones tienen más hype esta semana", preset: "hype" },
+  { label: "➕ Agregar valor", message: "Quiero agregar un valor a mi watchlist", preset: "agregar" },
 ];
 
 export default function BotPage() {
@@ -29,14 +30,25 @@ export default function BotPage() {
     setChatId(localStorage.getItem("quartly_chatId") || "default");
   }, []);
 
-  const { messages, isLoading, sendMessage, clearChat } = useChatbot(chatId);
+  const { messages, isLoading, sendMessage, clearChat, quota } = useChatbot(chatId);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const showQuotaWarning =
+    quota.exhausted ||
+    (quota.remaining > 0 && quota.remaining <= 3 && messages.length > 1);
+
   return (
-    <Column fillWidth position="relative" style={{ height: "calc(100vh - 64px)" }}>
+    <Column
+      fillWidth
+      position="relative"
+      style={{
+        height: "calc(100vh - 64px)",
+        background: "var(--neutral-background)",
+      }}
+    >
       {/* ── HEADER ─────────────────────────── */}
       <Row
         fillWidth
@@ -54,7 +66,7 @@ export default function BotPage() {
             paddingY="xs"
           >
             <Row gap="xs" vertical="center">
-              <Icon name="circle" size="xs" />
+              <Icon name="ball" size="xs" />
               <Text variant="label-default-xs">En línea</Text>
             </Row>
           </Badge>
@@ -87,7 +99,7 @@ export default function BotPage() {
             key={action.label}
             size="s"
             variant="secondary"
-            onClick={() => sendMessage(action.message)}
+            onClick={() => sendMessage(action.message, action.preset)}
             style={{ whiteSpace: "nowrap", flexShrink: 0 }}
           >
             {action.label}
@@ -95,13 +107,42 @@ export default function BotPage() {
         ))}
       </Row>
 
+      {/* ── QUOTA WARNING ────────────────────── */}
+      {showQuotaWarning && (
+        <Row
+          fillWidth
+          paddingX="m"
+          paddingY="xs"
+          gap="s"
+          vertical="center"
+          style={{
+            background: quota.exhausted
+              ? "var(--danger-alpha-weak)"
+              : "var(--brand-alpha-weak)",
+            borderTop: "1px solid var(--neutral-alpha-weak)",
+            borderBottom: "1px solid var(--neutral-alpha-weak)",
+          }}
+        >
+          <Icon name={quota.exhausted ? "warning" : "info"} size="s" />
+          <Text variant="label-default-xs" onBackground={quota.exhausted ? "danger-strong" : "brand-medium"}>
+            {quota.exhausted
+              ? "Cuota diaria agotada. Usa los botones rápidos, se resetea a medianoche."
+              : `Quedan ${quota.remaining} análisis con IA por hoy.`}
+          </Text>
+        </Row>
+      )}
+
       {/* ── MESSAGES ───────────────────────── */}
       <Column
         fillWidth
         paddingX="m"
         paddingY="s"
         gap="m"
-        style={{ overflowY: "auto", flex: 1 }}
+        style={{
+          overflowY: "auto",
+          flex: 1,
+          background: "var(--neutral-background)",
+        }}
       >
         <AnimatePresence initial={false}>
           {messages.map((msg) => (

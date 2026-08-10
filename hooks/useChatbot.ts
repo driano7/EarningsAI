@@ -27,10 +27,14 @@ export function useChatbot(chatId: string) {
     },
   ]);
   const [isLoading, setIsLoading] = useState(false);
+  const [quota, setQuota] = useState<{ remaining: number; exhausted: boolean }>({
+    remaining: 25,
+    exhausted: false,
+  });
   const abortRef = useRef<AbortController | null>(null);
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, preset?: string) => {
       if (!content.trim() || isLoading) return;
 
       const userMsg: ChatMessage = {
@@ -62,11 +66,15 @@ export function useChatbot(chatId: string) {
         const res = await fetch("/api/dashboard/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: content.trim(), chatId, history }),
+          body: JSON.stringify({ message: content.trim(), chatId, history, preset }),
           signal: abortRef.current.signal,
         });
 
         const data = await res.json();
+
+        if (typeof data.quotaRemaining === "number") {
+          setQuota({ remaining: data.quotaRemaining, exhausted: !!data.quotaExhausted });
+        }
 
         const assistantMsg: ChatMessage = {
           id: crypto.randomUUID(),
@@ -99,5 +107,5 @@ export function useChatbot(chatId: string) {
     setMessages((prev) => [prev[0]]);
   }, []);
 
-  return { messages, isLoading, sendMessage, clearChat };
+  return { messages, isLoading, sendMessage, clearChat, quota };
 }

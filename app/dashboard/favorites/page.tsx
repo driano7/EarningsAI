@@ -12,6 +12,7 @@ import { formatPercent } from "@/lib/formatFinance";
 import { getChartLineColor } from "@/lib/chartColors";
 import { TickerDetailChart } from "@/components/dashboard/TickerDetailChart";
 import { MacroStrip } from "@/components/dashboard/MacroStrip";
+import { Reveal } from "@/components/charts/Reveal";
 
 function Sparkline({ data, color, width = 120, height = 28 }: { data: number[]; color?: string; width?: number; height?: number }) {
   if (!data || data.length < 2) return null;
@@ -21,7 +22,7 @@ function Sparkline({ data, color, width = 120, height = 28 }: { data: number[]; 
   const points = data.map((v, i) => `${(i / (data.length - 1)) * width},${height - ((v - min) / range) * (height - 4) - 2}`).join(" ");
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ flexShrink: 0 }}>
-      <polyline points={points} fill="none" stroke={color || "var(--cyan-400)"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+      <polyline points={points} fill="none" stroke={color || "#22d3ee"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -116,6 +117,31 @@ export default function FavoritesPage() {
   const [showUserPicker, setShowUserPicker] = useState(false);
   const [logoErrors, setLogoErrors] = useState<Set<string>>(new Set());
   const [selectedTicker, setSelectedTicker] = useState<{ ticker: string; type: "stock" | "etf" | "crypto" } | null>(null);
+  const [suggestions, setSuggestions] = useState<
+    Array<{ ticker: string; name: string; type: "stock" | "etf" | "crypto" }>
+  >([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  useEffect(() => {
+    const query = addTicker.trim();
+    if (query.length === 0) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      fetch(`/api/dashboard/favorites/suggest?q=${encodeURIComponent(query)}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.ok) {
+            setSuggestions(data.suggestions || []);
+            setShowSuggestions(true);
+          }
+        })
+        .catch(() => setSuggestions([]));
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [addTicker]);
 
   useEffect(() => {
     const stored = localStorage.getItem("quartly_chatId") || "";
@@ -322,15 +348,85 @@ export default function FavoritesPage() {
       ) : (
         <>
           <Row gap="s" vertical="center" wrap>
-            <Input
-              id="add-ticker"
-              label="Agregar ticker"
-              placeholder={tab === "cryptos" ? "Ej: BTC, ETH, SOL" : "Ej: AAPL, MSFT"}
-              value={addTicker}
-              onChange={(e) => setAddTicker(e.target.value)}
-              onKeyDown={(e: React.KeyboardEvent) => { if (e.key === "Enter") handleAdd(); }}
-              style={{ minWidth: 200, flex: 1 }}
-            />
+            <Column gap="xs" style={{ position: "relative", flex: 1, minWidth: 220 }}>
+              <Input
+                id="add-ticker"
+                label="Agregar ticker"
+                placeholder={tab === "cryptos" ? "Ej: BTC, ETH, SOL" : "Ej: AAPL, MSFT"}
+                value={addTicker}
+                onChange={(e) => { setAddTicker(e.target.value); setShowSuggestions(true); }}
+                onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                onKeyDown={(e: React.KeyboardEvent) => {
+                  if (e.key === "Enter") { setShowSuggestions(false); handleAdd(); }
+                  if (e.key === "Escape") setShowSuggestions(false);
+                }}
+                style={{ minWidth: 200 }}
+              />
+
+              {showSuggestions && suggestions.length > 0 && (
+                <Column
+                  gap="2"
+                  padding="s"
+                  radius="m"
+                  style={{
+                    position: "absolute",
+                    top: "100%",
+                    left: 0,
+                    right: 0,
+                    zIndex: 3000,
+                    background: "var(--neutral-background)",
+                    border: "1px solid var(--brand-alpha-medium)",
+                    boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
+                    maxHeight: 260,
+                    overflowY: "auto",
+                  }}
+                >
+                  {suggestions.map((s) => (
+                    <button
+                      key={`${s.type}-${s.ticker}`}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setAddTicker(s.ticker);
+                        setShowSuggestions(false);
+                        setTimeout(() => handleAdd(), 50);
+                      }}
+                      className="liquid-btn"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 8,
+                        width: "100%",
+                        padding: "6px 10px",
+                        borderRadius: 6,
+                        border: "1px solid transparent",
+                        background: "transparent",
+                        color: "var(--neutral-on-background-strong)",
+                        cursor: "pointer",
+                        textAlign: "left",
+                      }}
+                    >
+                      <Row gap="s" vertical="center">
+                        <Badge
+                          textVariant="label-default-xs"
+                          color={s.type === "stock" ? "brand" : s.type === "etf" ? "accent" : "neutral"}
+                          paddingX="xs"
+                        >
+                          {s.ticker}
+                        </Badge>
+                        <Text variant="body-default-xs" onBackground="neutral-weak">
+                          {s.name}
+                        </Text>
+                      </Row>
+                      <Text variant="label-default-xs" onBackground="neutral-weak">
+                        {s.type === "stock" ? "Acción" : s.type === "etf" ? "ETF" : "Crypto"}
+                      </Text>
+                    </button>
+                  ))}
+                </Column>
+              )}
+            </Column>
             <Button onClick={handleAdd} disabled={!addTicker.trim() || adding}>
               {adding ? "Agregando..." : "+ Agregar"}
             </Button>
@@ -356,7 +452,8 @@ export default function FavoritesPage() {
               const c = item as FavCrypto;
               const detail = cryptoDetails.get(c.ticker);
               return (
-                <Card key={c.ticker} padding="m" radius="m" fillWidth
+                <Reveal key={c.ticker} delay={Math.min(activeItems.indexOf(item) * 0.04, 0.3)}>
+                <Card padding="m" radius="m" fillWidth
                   style={{ cursor: "pointer" }}
                   onClick={() => setSelectedTicker({ ticker: c.ticker, type: "crypto" })}
                 >
@@ -396,6 +493,7 @@ export default function FavoritesPage() {
                     <IconButton icon="trash" size="s" variant="danger" onClick={() => handleRemove(c.ticker, "crypto")} tooltip="Eliminar" />
                   </Row>
                 </Card>
+                </Reveal>
               );
             }
 
@@ -403,7 +501,8 @@ export default function FavoritesPage() {
               const e = item as FavEtf;
               const detail = etfDetails.get(e.ticker);
               return (
-                <Card key={e.ticker} padding="m" radius="m" fillWidth
+                <Reveal key={e.ticker} delay={Math.min(activeItems.indexOf(item) * 0.04, 0.3)}>
+                <Card padding="m" radius="m" fillWidth
                   style={{ cursor: "pointer" }}
                   onClick={() => setSelectedTicker({ ticker: e.ticker, type: "etf" })}
                 >
@@ -439,13 +538,15 @@ export default function FavoritesPage() {
                     <IconButton icon="trash" size="s" variant="danger" onClick={() => handleRemove(e.ticker, "etf")} tooltip="Eliminar" />
                   </Row>
                 </Card>
+                </Reveal>
               );
             }
 
             const s = item as FavStock;
             const detail = stockDetails.get(s.ticker);
             return (
-              <Card key={s.ticker} padding="m" radius="m" fillWidth
+              <Reveal key={s.ticker} delay={Math.min(activeItems.indexOf(item) * 0.04, 0.3)}>
+              <Card padding="m" radius="m" fillWidth
                 style={{ cursor: "pointer" }}
                 onClick={() => setSelectedTicker({ ticker: s.ticker, type: "stock" })}
               >
@@ -509,6 +610,7 @@ export default function FavoritesPage() {
                   <IconButton icon="trash" size="s" variant="danger" onClick={() => handleRemove(s.ticker, "stock")} tooltip="Eliminar" style={{ alignSelf: "flex-start" }} />
                 </Row>
               </Card>
+              </Reveal>
             );
           })}
         </Grid>
