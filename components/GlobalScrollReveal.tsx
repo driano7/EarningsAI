@@ -48,6 +48,25 @@ export function GlobalScrollReveal() {
 
     let observer: IntersectionObserver | null = null;
     const seen = new Set<Element>();
+    let fixedHosts = new Set<Element>();
+
+    function collectFixedHosts(root: ParentNode) {
+      const hosts = new Set<Element>();
+      const fixedEls = root.querySelectorAll<HTMLElement>(
+        '[style*="position: fixed"], [style*="position:fixed"]'
+      );
+      for (const f of fixedEls) {
+        if (getComputedStyle(f).position !== "fixed") continue;
+        for (
+          let n: HTMLElement | null = f.parentElement;
+          n && n !== document.body && n !== document.documentElement;
+          n = n.parentElement
+        ) {
+          hosts.add(n);
+        }
+      }
+      fixedHosts = hosts;
+    }
 
     function reveal(el: HTMLElement, rect: DOMRect) {
       const vh = window.innerHeight;
@@ -60,6 +79,7 @@ export function GlobalScrollReveal() {
 
     function candidate(el: HTMLElement) {
       if (!qualifies(el) || seen.has(el)) return;
+      if (fixedHosts.has(el)) return;
       seen.add(el);
       el.classList.add("gsr-block");
       const rect = el.getBoundingClientRect();
@@ -76,6 +96,7 @@ export function GlobalScrollReveal() {
     }
 
     function scan(root: ParentNode) {
+      collectFixedHosts(root);
       const items = root.querySelectorAll<HTMLElement>("div, section, article, main, header, footer, ul, ol, li, table, form, figure, aside, h1, h2, h3");
       items.forEach(candidate);
     }

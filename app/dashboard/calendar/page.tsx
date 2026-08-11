@@ -47,7 +47,7 @@ interface CalendarDay {
   date: string;
   day: number;
   isCurrentMonth: boolean;
-  events: Array<{ symbol: string; name: string; hour?: string; estimate?: number; actual?: number | null; surprisePercent?: number | null; type: "upcoming" | "past"; quarter?: string }>;
+  events: Array<{ symbol: string; name: string; logo?: string | null; hour?: string; estimate?: number; actual?: number | null; surprisePercent?: number | null; type: "upcoming" | "past"; quarter?: string }>;
 }
 
 const MONTHS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
@@ -64,7 +64,7 @@ function formatDate(dateStr: string): string {
 
 export default function CalendarPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [stockEarnings, setStockEarnings] = useState<EarningEvent[]>([]);
+  const [stockEarnings, setStockEarnings] = useState<(EarningEvent & { logo?: string | null })[]>([]);
   const [cryptos, setCryptos] = useState<CryptoData[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(() => {
@@ -93,9 +93,9 @@ export default function CalendarPage() {
     ]).then(([calData, earningsData, cryptoData]) => {
       if (calData.ok) setEvents(calData.events);
       if (earningsData.ok) {
-        const all: EarningEvent[] = [];
+        const all: Array<EarningEvent & { logo?: string | null }> = [];
         for (const s of earningsData.stocks || []) {
-          if (s.earnings) all.push(...s.earnings);
+          if (s.earnings) all.push(...s.earnings.map((e: EarningEvent) => ({ ...e, logo: s.logo })));
         }
         setStockEarnings(all);
       }
@@ -113,6 +113,7 @@ export default function CalendarPage() {
       map.get(d)!.push({
         symbol: e.symbol,
         name: e.symbol,
+        logo: e.logo,
         type: "past",
         quarter: qLabel,
         estimate: e.estimate,
@@ -266,7 +267,16 @@ export default function CalendarPage() {
               const hasEarnings = earningsTickers.length > 0;
               const hasUpcoming = day.events.some((e) => e.type === "upcoming");
               const maxLogos = 3;
-              const extraLogos = earningsTickers.length - maxLogos;
+              const logoEvents = [
+                ...earningsTickers.map((t) => ({ ticker: t.ticker, logo: t.logo })),
+                ...day.events
+                  .filter((ev) => ev.type === "past")
+                  .map((ev) => ({ ticker: ev.symbol, logo: ev.logo })),
+              ].filter(
+                (item, idx, arr) =>
+                  item.logo && arr.findIndex((x) => x.ticker === item.ticker) === idx
+              );
+              const extraLogos = logoEvents.length - maxLogos;
 
               return (
                 <Column
@@ -310,11 +320,11 @@ export default function CalendarPage() {
                   </Row>
 
                   {/* Earnings logos */}
-                  {hasEarnings && (
+                  {logoEvents.length > 0 && (
                     <Row gap={2} style={{ flexWrap: "wrap" }}>
-                      {earningsTickers.slice(0, maxLogos).map((t, i) => (
+                      {logoEvents.slice(0, maxLogos).map((item, i) => (
                         <div
-                          key={`${t.ticker}-${i}`}
+                          key={`${item.ticker}-${i}`}
                           style={{
                             width: 20,
                             height: 20,
@@ -323,12 +333,12 @@ export default function CalendarPage() {
                             background: "var(--neutral-alpha-weak)",
                             flexShrink: 0,
                           }}
-                          title={t.ticker}
+                          title={item.ticker}
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
-                            src={t.logo || `/api/logos/${t.ticker}`}
-                            alt={t.ticker}
+                            src={item.logo || `/api/logos/${item.ticker}`}
+                            alt={item.ticker}
                             width={20}
                             height={20}
                             style={{ objectFit: "cover", width: "100%", height: "100%" }}
@@ -359,9 +369,7 @@ export default function CalendarPage() {
                       )}
                     </Row>
                   )}
-
-                  {/* Legacy events (past earnings) */}
-                  {!hasEarnings && hasEvents && (
+                  {logoEvents.length === 0 && hasEvents && (
                     <Column gap={2}>
                       {day.events.slice(0, 2).map((ev, i) => (
                         <Badge
@@ -442,9 +450,28 @@ export default function CalendarPage() {
                 <Card key={`legacy-${ev.symbol}-${i}`} padding="m" radius="m" fillWidth>
                   <Row vertical="center" horizontal="between" wrap gap="s">
                     <Row gap="m" vertical="center">
-                      <Badge textVariant="label-default-s" color={ev.type === "upcoming" ? "brand" : "neutral"}>
-                        {ev.symbol}
-                      </Badge>
+                      <div
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: "50%",
+                          overflow: "hidden",
+                          background: "var(--neutral-alpha-weak)",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={ev.logo || `/api/logos/${ev.symbol}`}
+                          alt={ev.symbol}
+                          width={36}
+                          height={36}
+                          style={{ objectFit: "cover", width: "100%", height: "100%" }}
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).style.display = "none";
+                          }}
+                        />
+                      </div>
                       <Column gap="xs">
                         <Row gap="s" vertical="center">
                           <Text variant="body-default-m">{ev.name}</Text>
@@ -515,7 +542,7 @@ export default function CalendarPage() {
               ) : (
                 <Column gap="m">
                   {/* Logos row */}
-                  {selectedDayEarnings.length > 0 && (
+                  {(selectedDayEarnings.length > 0 || selectedDayEvents.length > 0) && (
                     <Row gap="s" style={{ flexWrap: "wrap" }}>
                       {selectedDayEarnings.map((ev, i) => (
                         <div
@@ -552,6 +579,43 @@ export default function CalendarPage() {
                           <Text variant="label-default-xs" onBackground="neutral-strong">{ev.ticker}</Text>
                         </div>
                       ))}
+                      {selectedDayEvents
+                        .filter((ev) => ev.type === "past" && !selectedDayEarnings.some((d) => d.ticker === ev.symbol))
+                        .map((ev, i) => (
+                          <div
+                            key={`legacy-${ev.symbol}-${i}`}
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              alignItems: "center",
+                              gap: 4,
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: 48,
+                                height: 48,
+                                borderRadius: "50%",
+                                overflow: "hidden",
+                                background: "var(--neutral-alpha-weak)",
+                                border: "2px solid var(--brand-alpha-medium)",
+                              }}
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={ev.logo || `/api/logos/${ev.symbol}`}
+                                alt={ev.symbol}
+                                width={48}
+                                height={48}
+                                style={{ objectFit: "cover", width: "100%", height: "100%" }}
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = "none";
+                                }}
+                              />
+                            </div>
+                            <Text variant="label-default-xs" onBackground="neutral-strong">{ev.symbol}</Text>
+                          </div>
+                        ))}
                     </Row>
                   )}
 
@@ -604,24 +668,50 @@ export default function CalendarPage() {
                   {/* Legacy events */}
                   {selectedDayEvents.map((ev, i) => (
                     <Card key={`modal-legacy-${ev.symbol}-${i}`} padding="m" radius="m" fillWidth>
-                      <Column gap="xs">
-                        <Row gap="s" vertical="center">
-                          <Badge textVariant="label-default-s" color={ev.type === "upcoming" ? "brand" : "neutral"}>
-                            {ev.symbol}
-                          </Badge>
-                          <Text variant="body-default-m">{ev.name}</Text>
-                          {ev.quarter && (
-                            <Text variant="body-default-s" onBackground="neutral-weak">{ev.quarter}</Text>
-                          )}
-                        </Row>
-                        <Text variant="body-default-s" onBackground="neutral-weak">
-                          Est: ${ev.estimate?.toFixed(2) ?? "—"}
-                          {ev.actual !== null && ev.actual !== undefined ? ` | Real: $${ev.actual.toFixed(2)}` : ""}
-                          {ev.surprisePercent !== null && ev.surprisePercent !== undefined
-                            ? ` | ${ev.surprisePercent >= 0 ? "+" : ""}${ev.surprisePercent.toFixed(1)}%`
-                            : ""}
-                        </Text>
-                      </Column>
+                      <Row gap="m" vertical="center" align="start">
+                        {ev.logo && (
+                          <div
+                            style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: "50%",
+                              overflow: "hidden",
+                              background: "var(--neutral-alpha-weak)",
+                              flexShrink: 0,
+                            }}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={ev.logo}
+                              alt={ev.symbol}
+                              width={32}
+                              height={32}
+                              style={{ objectFit: "cover", width: "100%", height: "100%" }}
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = "none";
+                              }}
+                            />
+                          </div>
+                        )}
+                        <Column gap="xs" fillWidth>
+                          <Row gap="s" vertical="center" wrap>
+                            <Badge textVariant="label-default-s" color={ev.type === "upcoming" ? "brand" : "neutral"}>
+                              {ev.symbol}
+                            </Badge>
+                            <Text variant="body-default-m">{ev.name}</Text>
+                            {ev.quarter && (
+                              <Text variant="body-default-s" onBackground="neutral-weak">{ev.quarter}</Text>
+                            )}
+                          </Row>
+                          <Text variant="body-default-s" onBackground="neutral-weak">
+                            Est: ${ev.estimate?.toFixed(2) ?? "—"}
+                            {ev.actual !== null && ev.actual !== undefined ? ` | Real: $${ev.actual.toFixed(2)}` : ""}
+                            {ev.surprisePercent !== null && ev.surprisePercent !== undefined
+                              ? ` | ${ev.surprisePercent >= 0 ? "+" : ""}${ev.surprisePercent.toFixed(1)}%`
+                              : ""}
+                          </Text>
+                        </Column>
+                      </Row>
                     </Card>
                   ))}
                 </Column>

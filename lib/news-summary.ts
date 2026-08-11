@@ -270,34 +270,95 @@ async function generateAISupernota(
   }
 }
 
+const SUMMARY_HISTORY_LIMIT = 30;
+const HISTORY_INDEX_KEY = (chatId: string) => `supernota:idx:${chatId}`;
+
 async function saveSummary(chatId: string, date: string, content: string): Promise<void> {
   const key = `supernota:${chatId}:${date}`;
   const entry: DailySummary = { date, content, createdAt: Date.now() };
   await kv.set(key, entry, { ex: SUMMARY_TTL_SECONDS });
+
+  try {
+    const idxKey = HISTORY_INDEX_KEY(chatId);
+    const index = (await kv.get<{ date: string; createdAt: number }[]>(idxKey)) || [];
+    index.push({ date, createdAt: entry.createdAt });
+    index.sort((a, b) => b.createdAt - a.createdAt);
+    const trimmed = index.slice(0, SUMMARY_HISTORY_LIMIT);
+    await kv.set(idxKey, trimmed, { ex: SUMMARY_TTL_SECONDS });
+
+    for (const stale of index.slice(SUMMARY_HISTORY_LIMIT)) {
+      await kv.del(`supernota:${chatId}:${stale.date}`).catch(() => {});
+    }
+  } catch (err) {
+    console.error(`[news-summary] saveSummary index update failed:`, err);
+  }
 }
 
 export async function getSummaryHistory(chatId: string): Promise<DailySummary[]> {
   try {
-    const pattern = `supernota:${chatId}:*`;
-    const keys: string[] = [];
-    for await (const key of kv.scanIterator({ match: pattern, count: 100 })) {
-      keys.push(key);
+    const idxKey = HISTORY_INDEX_KEY(chatId);
+    const index = (await kv.get<{ date: string; createdAt: number }[]>(idxKey)) || [];
+
+    if (index.length === 0) {
+      const legacy = await scanLegacySummaryKeys(chatId);
+      if (legacy.length > 0) {
+        await kv.set(
+          idxKey,
+          legacy.map((e) => ({ date: e.date, createdAt: e.createdAt })),
+          { ex: SUMMARY_TTL_SECONDS }
+        );
+        return legacy;
+      }
+      return [];
     }
 
-    if (keys.length === 0) return [];
-
-    const entries = await Promise.all(
-      keys.map(async (key) => {
-        const entry = await kv.get<DailySummary>(key);
-        return entry;
-      })
+    const entries: DailySummary[] = [];
+    const concurrency = 5;
+    let cursor = 0;
+    async function worker() {
+      while (cursor < index.length) {
+        const item = index[cursor++];
+        const entry = await kv.get<DailySummary>(`supernota:${chatId}:${item.date}`);
+        if (entry) entries.push(entry);
+      }
+    }
+    await Promise.all(
+      Array.from({ length: Math.min(concurrency, index.length) }, () => worker())
     );
 
-    return entries
-      .filter((e): e is DailySummary => e !== null)
-      .sort((a, b) => b.createdAt - a.createdAt);
+    return entries.sort((a, b) => b.createdAt - a.createdAt);
   } catch (err) {
     console.error(`[news-summary] getSummaryHistory failed:`, err);
+    return [];
+  }
+}
+
+async function scanLegacySummaryKeys(chatId: string): Promise<DailySummary[]> {
+  try {
+    const keys: string[] = [];
+    for await (const key of kv.scanIterator({ match: `supernota:${chatId}:*`, count: 100 })) {
+      if (keys.length >= SUMMARY_HISTORY_LIMIT) break;
+      keys.push(key);
+    }
+    if (keys.length === 0) return [];
+
+    const entries: DailySummary[] = [];
+    const concurrency = 5;
+    let cursor = 0;
+    async function worker() {
+      while (cursor < keys.length) {
+        const key = keys[cursor++];
+        const entry = await kv.get<DailySummary>(key);
+        if (entry) entries.push(entry);
+      }
+    }
+    await Promise.all(
+      Array.from({ length: Math.min(concurrency, keys.length) }, () => worker())
+    );
+
+    return entries.sort((a, b) => b.createdAt - a.createdAt);
+  } catch (err) {
+    console.error(`[news-summary] scanLegacySummaryKeys failed:`, err);
     return [];
   }
 }
