@@ -50,9 +50,26 @@ export function MobileDock({ onChatToggle, chatOpen }: MobileDockProps) {
   }, [pathname, resetTimer]);
 
   useEffect(() => {
-    const events = ["pointerdown", "focusin", "scroll"];
+    const events = ["pointerdown", "focusin"];
     events.forEach((e) => document.addEventListener(e, resetTimer, { passive: true }));
     return () => events.forEach((e) => document.removeEventListener(e, resetTimer));
+  }, [resetTimer]);
+
+  useEffect(() => {
+    let lastY = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      if (y > lastY) {
+        setCompact(true);
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => setCompact(true), 10000);
+      } else {
+        resetTimer();
+      }
+      lastY = y;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, [resetTimer]);
 
   return (

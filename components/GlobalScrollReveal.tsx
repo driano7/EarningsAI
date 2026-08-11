@@ -49,17 +49,30 @@ export function GlobalScrollReveal() {
     let observer: IntersectionObserver | null = null;
     const seen = new Set<Element>();
 
+    function reveal(el: HTMLElement, rect: DOMRect) {
+      const vh = window.innerHeight;
+      const vw = window.innerWidth;
+      const visible =
+        rect.top < vh - 4 && rect.bottom > 4 && rect.left < vw && rect.right > 0;
+      if (visible) el.classList.add("gsr-in");
+      return visible;
+    }
+
     function candidate(el: HTMLElement) {
       if (!qualifies(el) || seen.has(el)) return;
       seen.add(el);
       el.classList.add("gsr-block");
       const rect = el.getBoundingClientRect();
-      const vh = window.innerHeight;
-      if (rect.top < vh && rect.bottom > 0) {
-        el.classList.add("gsr-in");
-        return;
-      }
+      if (reveal(el, rect)) return;
       observer?.observe(el);
+      requestAnimationFrame(() => {
+        if (el.isConnected) {
+          const rect2 = el.getBoundingClientRect();
+          if (reveal(el, rect2) && document.contains(el)) {
+            observer?.unobserve(el);
+          }
+        }
+      });
     }
 
     function scan(root: ParentNode) {
