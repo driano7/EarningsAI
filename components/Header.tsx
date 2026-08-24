@@ -31,6 +31,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: "presentationChartLine" },
   { label: "Portafolio", href: "/dashboard/portfolio", icon: "chartPie" },
+  { label: "Superinversores", href: "/dashboard/superinversores", icon: "users" },
   { label: "Movimientos", href: "/dashboard/transactions", icon: "arrowsRightLeft" },
   { label: "Bot", href: "/bot", icon: "commandLine" },
 ];
