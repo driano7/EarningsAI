@@ -14,6 +14,7 @@ import { SP500 } from "./sp500";
 import { ETFS } from "./etfs";
 import { CUSTOM_TICKERS } from "./custom-tickers";
 import { getQuote } from "./finnhub";
+import { getAllSuperInvestorChanges, formatSuperInvestorForPrompt, type SuperInvestorChanges } from "./superinvestors";
 
 export interface DailySummary {
   date: string;
@@ -84,13 +85,15 @@ function buildSupernotaPrompt(
   marketNews: NewsArticle[],
   tickerNews: Array<{ ticker: string; articles: NewsArticle[] }>,
   prices: Array<{ ticker: string; current: number; change: number | null; prevClose: number | null }>,
-  allTickers: string[]
+  allTickers: string[],
+  superInvestorChanges: SuperInvestorChanges[]
 ): string {
   const macroText = formatMacroForPrompt(macros);
   const marketText = formatNewsForPrompt(marketNews);
   const tickerText = formatTickerNewsForPrompt(tickerNews);
   const priceText = formatPricesForPrompt(prices);
   const tickerList = allTickers.join(", ");
+  const superInvestorText = superInvestorChanges.map(formatSuperInvestorForPrompt).join("\n");
 
   return `Eres un analista financiero experto especializado en tecnologia, semiconductores, IA, gaming, ciberseguridad y computacion cuantica. Genera la "Supernota" — un resumen ejecutivo diario para un inversionista retail activo.
 
@@ -110,18 +113,30 @@ ${marketText}
 NOTICIAS DE TICKERS DEL PORTAFOLIO (NewsAPI):
 ${tickerText}
 
-INSTRUCCIONES — FORMATO "SUPERNOTA" (MAXIMO 3000 PALABRAS):
-1. Escribe en ESPANOL, tono directo y profesional.
+SMART MONEY / SUPERINVERSORES (13F Último Trimestre):
+${superInvestorText || "Sin datos disponibles"}
+
+INSTRUCCIONES — FORMATO "SUPERNOTA" (MAXIMO 4000 PALABRAS):
+1. Escribe en ESPANOL, tono directo, técnico y profesional.
 2. Empieza con un titular de 1 linea que resuma el dia.
 3. PORTAFOLIO ACTIVO: resumen de movimiento de los tickers mas relevantes con precio actual, % y direccion. Alertar tickers con movimiento superior a +/-3%.
 4. MACRO CAVA: analiza VIX, correlacion, M2, bono 10 anos, oro, Bitcoin como indicadores. Indica si es dia de escalar o proteger.
 5. SENALES DE ENTRADA: alertar trampas tecnicas o correcciones >=10% como ventanas de entrada.
 6. CATALIZADORES: earnings, guidance, upgrades, contratos HBM/NAND, hitos relevantes.
-7. CIERRE: semaforo macro — verde (escalar), amarillo (neutral), rojo (proteger). Justifica en 1 linea.
-8. Usa emojis moderadamente para secciones.
-9. NO uses markdown asterisks para negrita. Usa texto plano.
-10. Maximo 3000 palabras.
-11. Termina con: "— Quartly Supernota, ${today}"`;
+7. SECCIÓN EXTRA - ANÁLISIS DE SMART MONEY (SUPERINVERSORES):
+   Analiza los datos del Formulario 13F del trimestre actual suministrados para los 3 inversores clave y extrae conclusiones claras:
+   - BERKSHIRE HATHAWAY (Referente S&P 500 / Valor & Calidad):
+     * Compras/Ventas principales y lectura sobre la economía general.
+   - PERSHING SQUARE - BILL ACKMAN (Referente Nasdaq / Big Tech):
+     * Movimientos en consumo/tecnología y su apuesta de valoración.
+   - DUQUESNE - STANLEY DRUCKENMILLER (Referente Semiconductores & IA):
+     * Movimientos en la cadena de suministro de hardware/chips y ciclo tecnológico.
+   REGLAS: Sé directo, conciso y técnico. Finaliza con una síntesis global indicando dónde coinciden estos tres grandes capitales.
+8. CIERRE: semaforo macro — verde (escalar), amarillo (neutral), rojo (proteger). Justifica en 1 linea.
+9. Usa emojis moderadamente para secciones.
+10. NO uses markdown asterisks para negrita. Usa texto plano.
+11. Maximo 4000 palabras.
+12. Termina con: "— Quartly Supernota, ${today}"`;
 }
 
 async function fetchTickerPrices(tickers: string[]): Promise<Array<{ ticker: string; current: number; change: number | null; prevClose: number | null }>> {
@@ -156,10 +171,11 @@ export async function generateDailyNewsSummary(chatId: string): Promise<string> 
   const { stocks, etfs } = await getUserWatchlist(chatId);
   const allTickers = [...stocks, ...etfs];
 
-  const [marketNews, macros, prices] = await Promise.all([
+  const [marketNews, macros, prices, superInvestorChanges] = await Promise.all([
     getMarketNews(8),
     getMacroSnapshot(),
     fetchTickerPrices(allTickers),
+    getAllSuperInvestorChanges(),
   ]);
 
   const tickerNews: Array<{ ticker: string; articles: NewsArticle[] }> = [];
@@ -177,7 +193,7 @@ export async function generateDailyNewsSummary(chatId: string): Promise<string> 
   const { allowed: aiAllowed } = await checkAndConsumeQuota(1);
 
   if (aiAllowed) {
-    const summary = await generateAISupernota(today, macros, marketNews, tickerNews, prices, allTickers);
+    const summary = await generateAISupernota(today, macros, marketNews, tickerNews, prices, allTickers, superInvestorChanges);
     if (summary) {
       await saveSummary(chatId, today, summary);
       return summary;
@@ -222,9 +238,18 @@ export async function generateDailyNewsSummary(chatId: string): Promise<string> 
         msg += `    - ${article.title}\n`;
       }
     }
+    msg += "\n";
   }
 
-  if (marketNews.length === 0 && tickerNews.length === 0 && macros.length === 0) {
+  if (superInvestorChanges.length > 0) {
+    msg += `SMART MONEY / SUPERINVERSORES (13F):\n`;
+    for (const s of superInvestorChanges) {
+      msg += formatSuperInvestorForPrompt(s);
+    }
+    msg += "\n";
+  }
+
+  if (marketNews.length === 0 && tickerNews.length === 0 && macros.length === 0 && superInvestorChanges.length === 0) {
     msg += `_Sin datos disponibles hoy._`;
   }
 
@@ -238,12 +263,13 @@ async function generateAISupernota(
   marketNews: NewsArticle[],
   tickerNews: Array<{ ticker: string; articles: NewsArticle[] }>,
   prices: Array<{ ticker: string; current: number; change: number | null; prevClose: number | null }>,
-  allTickers: string[]
+  allTickers: string[],
+  superInvestorChanges: SuperInvestorChanges[]
 ): Promise<string | null> {
   const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY || "";
   if (!OPENROUTER_KEY) return null;
 
-  const prompt = buildSupernotaPrompt(today, macros, marketNews, tickerNews, prices, allTickers);
+  const prompt = buildSupernotaPrompt(today, macros, marketNews, tickerNews, prices, allTickers, superInvestorChanges);
 
   try {
     const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {

@@ -95,18 +95,37 @@ async function buildPortafolioMessage(chatId: string): Promise<string> {
   }
 
   const rows: string[] = [];
-  let totalPnl = 0;
+  let totalValue = 0;
+  let totalCost = 0;
   for (const pos of positions) {
     const quote = await getQuote(pos.ticker).catch(() => null);
     const currentPrice = quote?.c ?? null;
-    const pnl = currentPrice !== null ? ((currentPrice - pos.buyPrice) / pos.buyPrice * 100) : null;
-    if (pnl !== null) totalPnl += pnl;
+    const cost = pos.buyPrice * pos.quantity;
+    const value = currentPrice !== null ? currentPrice * pos.quantity : null;
+    const pnl = value !== null ? value - cost : null;
+    const pnlPct = value !== null && cost > 0 ? ((value - cost) / cost) * 100 : null;
+    totalCost += cost;
+    if (value !== null) totalValue += value;
     const emoji = pnl !== null ? (pnl >= 0 ? "🟢" : "🔴") : "⚪";
-    rows.push(`${emoji} *${pos.ticker}* (${pos.type}) — Compra: $${pos.buyPrice} | Actual: $${currentPrice?.toFixed(2) ?? "N/A"} | P&L: ${pnl !== null ? pnl.toFixed(2) + "%" : "N/A"} | Qty: ${pos.quantity}`);
+    const qtyStr = pos.quantity === Math.floor(pos.quantity) ? pos.quantity.toString() : pos.quantity.toFixed(4).replace(/\.?0+$/, "");
+    const pnlSign = pnl !== null && pnl >= 0 ? "+" : "";
+    const pnlPctSign = pnlPct !== null && pnlPct >= 0 ? "+" : "";
+    const pnlStr = pnl !== null ? `${pnlSign}$${pnl.toFixed(2)} (${pnlPct !== null ? `${pnlPctSign}${pnlPct.toFixed(2)}%` : "N/A"})` : "N/A";
+    const valueStr = value !== null ? `$${value.toFixed(2)}` : "N/A";
+    const currentPriceStr = currentPrice !== null ? `$${currentPrice.toFixed(2)}` : "N/A";
+
+    rows.push(
+      `${emoji} *${pos.ticker}* (${pos.type})\n` +
+      `  Qty: ${qtyStr} | Compra: $${pos.buyPrice.toFixed(2)} → Invertido: $${cost.toFixed(2)}\n` +
+      `  Actual: ${currentPriceStr} → Valor: ${valueStr}\n` +
+      `  P&L: ${pnlStr}`
+    );
   }
 
-  const avgPnl = (totalPnl / positions.length).toFixed(2);
-  return `📈 *Tu Portafolio (${positions.length} posiciones)*\n\n${rows.join("\n")}\n\n📊 P&L Promedio: ${avgPnl}%`;
+  const totalPnl = totalValue - totalCost;
+  const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
+  const totalEmoji = totalPnl >= 0 ? "🟢" : "🔴";
+  return `📈 *Tu Portafolio (${positions.length} posiciones)*\n\n${rows.join("\n\n")}\n\n${totalEmoji} *Total:* Invertido $${totalCost.toFixed(2)} → Valor $${totalValue.toFixed(2)} | P&L: ${totalPnl >= 0 ? "+" : ""}$${totalPnl.toFixed(2)} (${totalPnlPct >= 0 ? "+" : ""}${totalPnlPct.toFixed(2)}%)`;
 }
 
 const QUOTA_EXHAUSTED_MSG = "⚠️ Cuota diaria de análisis agotada. Se resetea a las 00:00 UTC.";

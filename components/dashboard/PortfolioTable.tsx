@@ -214,10 +214,13 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
             <tr style={{ borderBottom: "1px solid var(--neutral-alpha-weak)" }}>
               <Th onClick={() => toggleSort("ticker")}>Nombre{sortIndicator("ticker")}</Th>
               <Th>Tipo</Th>
-              <Th>Monto</Th>
+              <Th>Cantidad</Th>
+              <Th>Precio compra</Th>
+              <Th>Invertido total</Th>
               <Th>Vence</Th>
               <Th>Condiciones</Th>
-              <Th onClick={() => toggleSort("currentPrice")}>Valor actual{sortIndicator("currentPrice")}</Th>
+              <Th>Precio actual</Th>
+              <Th>Valor actual total</Th>
               <Th onClick={() => toggleSort("pnlPercent")}>Rendimiento{sortIndicator("pnlPercent")}</Th>
               <Th>Acciones</Th>
             </tr>
@@ -225,7 +228,7 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={8} style={{ padding: 24, textAlign: "center" }}>
+                <td colSpan={11} style={{ padding: 24, textAlign: "center" }}>
                   <Text variant="body-default-s" onBackground="neutral-weak">
                     No hay posiciones que coincidan con los filtros.
                   </Text>
@@ -234,9 +237,13 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
             ) : (
               filtered.map((pos) => {
                 const savings = isSavingsType(pos.type);
-                const pnlColor = pos.pnl === null
+                const totalCost = pos.buyPrice * pos.quantity;
+                const totalValue = pos.currentPrice !== null ? pos.currentPrice * pos.quantity : null;
+                const pnl = totalValue !== null ? totalValue - totalCost : null;
+                const pnlPercent = totalValue !== null && totalCost > 0 ? ((totalValue - totalCost) / totalCost) * 100 : null;
+                const pnlColor = pnl === null
                   ? "var(--neutral-on-background-weak)"
-                  : pos.pnl >= 0
+                  : pnl >= 0
                     ? "var(--success-medium)"
                     : "var(--danger-medium)";
                 return (
@@ -256,7 +263,15 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
                       </Text>
                     </td>
                     <td style={{ padding: "12px 16px" }}>
+                      <Text variant="body-default-m" style={{ fontFamily: "monospace" }}>
+                        {pos.quantity === Math.floor(pos.quantity) ? pos.quantity.toString() : pos.quantity.toFixed(4).replace(/\.?0+$/, "")}
+                      </Text>
+                    </td>
+                    <td style={{ padding: "12px 16px" }}>
                       <Text variant="body-default-m">${pos.buyPrice.toFixed(2)}</Text>
+                    </td>
+                    <td style={{ padding: "12px 16px" }}>
+                      <Text variant="body-default-m" style={{ fontWeight: 500 }}>${totalCost.toFixed(2)}</Text>
                     </td>
                     <td style={{ padding: "12px 16px" }}>
                       <Text variant="body-default-m">
@@ -278,6 +293,11 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
                       </Text>
                     </td>
                     <td style={{ padding: "12px 16px" }}>
+                      <Text variant="body-default-m" style={{ fontWeight: 500 }}>
+                        {totalValue !== null ? `$${totalValue.toFixed(2)}` : "—"}
+                      </Text>
+                    </td>
+                    <td style={{ padding: "12px 16px" }}>
                       {savings ? (
                         pos.yieldRate !== undefined && pos.yieldRate !== null ? (
                           <Text variant="body-default-m" style={{ color: "var(--success-medium)", fontWeight: 600 }}>
@@ -289,13 +309,13 @@ export default function PortfolioTable({ positions, onEdit, onDelete, onSell, on
                       ) : (
                         <Column gap="xs">
                           <Text variant="body-default-m" style={{ color: pnlColor, fontWeight: 600 }}>
-                            {pos.pnl !== null
-                              ? `${pos.pnl >= 0 ? "+" : ""}$${pos.pnl.toFixed(2)}`
+                            {pnl !== null
+                              ? `${pnl >= 0 ? "+" : ""}$${pnl.toFixed(2)}`
                               : "—"}
                           </Text>
-                          {pos.pnlPercent !== null && (
+                          {pnlPercent !== null && (
                             <Text variant="body-default-xs" style={{ color: pnlColor }}>
-                              ({pos.pnlPercent >= 0 ? "+" : ""}{pos.pnlPercent.toFixed(2)}%)
+                              ({pnlPercent >= 0 ? "+" : ""}{pnlPercent.toFixed(2)}%)
                             </Text>
                           )}
                         </Column>
