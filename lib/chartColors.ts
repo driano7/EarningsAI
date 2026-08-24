@@ -56,11 +56,8 @@ export function getRandomBarGradient(index: number): { start: string; end: strin
 }
 
 export const CHART_GLASS_STYLE = {
-  background: "rgba(255, 255, 255, 0.03)",
-  backdropFilter: "blur(20px) saturate(1.5)",
-  WebkitBackdropFilter: "blur(20px) saturate(1.5)",
-  border: "1px solid rgba(255, 255, 255, 0.08)",
+  background: "var(--neutral-background)",
+  border: "1px solid var(--neutral-alpha-medium)",
   borderRadius: 12,
-  boxShadow: "0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05), inset 0 -1px 0 rgba(0,0,0,0.08)",
   overflow: "hidden" as const,
 };

@@ -61,8 +61,14 @@ export function TickerDetailChart({ ticker, type, anchorRect, onClose }: Props) 
   const [period, setPeriod] = useState<string>("1y");
   const [chartType, setChartType] = useState<"line" | "area" | "bar">("line");
   const [dataTimestamp, setDataTimestamp] = useState<number>(0);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     setLoading(true);
     setError("");
 
@@ -97,11 +103,11 @@ export function TickerDetailChart({ ticker, type, anchorRect, onClose }: Props) 
       : "#ef4444";
   const gridColor = "rgba(255,255,255,0.05)";
 
-  // Calculate popover position
-  const popoverStyle: React.CSSProperties = anchorRect
+  // Calculate popover position (client-side only)
+  const popoverStyle: React.CSSProperties = anchorRect && mounted
     ? {
         position: "fixed",
-        left: Math.min(anchorRect.left, window.innerWidth - 720),
+        left: Math.min(anchorRect.left, (typeof window !== "undefined" ? window.innerWidth : 1200) - 720),
         top: anchorRect.bottom + 8,
         zIndex: 2000,
         maxWidth: 700,
@@ -200,15 +206,14 @@ export function TickerDetailChart({ ticker, type, anchorRect, onClose }: Props) 
                     <YAxis tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 10 }} domain={["auto", "auto"]} />
                     <Tooltip
                       contentStyle={{
-                        background: "rgba(255,255,255,0.04)",
-                        backdropFilter: "blur(24px) saturate(1.6)",
-                        border: "1px solid rgba(255,255,255,0.1)",
+                        background: "var(--neutral-surface)",
+                        border: "1px solid var(--neutral-alpha-medium)",
                         borderRadius: 8,
-                        boxShadow: "0 4px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
                         padding: "0.5rem 0.75rem",
                         color: "var(--neutral-on-background-strong)",
                       }}
-                      formatter={(value) => [`$${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, ticker]}
+                      formatter={(value) => [`${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, ticker]}
                     />
                     <Bar dataKey="value" fill={lineColor} radius={[4, 4, 0, 0]} maxBarSize={40} />
                   </BarChart>
@@ -219,17 +224,16 @@ export function TickerDetailChart({ ticker, type, anchorRect, onClose }: Props) 
                     <YAxis tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 10 }} domain={["auto", "auto"]} />
                     <Tooltip
                       contentStyle={{
-                        background: "rgba(255,255,255,0.04)",
-                        backdropFilter: "blur(24px) saturate(1.6)",
-                        border: "1px solid rgba(255,255,255,0.1)",
+                        background: "var(--neutral-surface)",
+                        border: "1px solid var(--neutral-alpha-medium)",
                         borderRadius: 8,
-                        boxShadow: "0 4px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
                         padding: "0.5rem 0.75rem",
                         color: "var(--neutral-on-background-strong)",
                       }}
-                      formatter={(value) => [`$${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, ticker]}
+                      formatter={(value) => [`${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, ticker]}
                     />
-                    <Area type="monotone" dataKey="value" stroke={lineColor} fill={lineColor} fillOpacity={0.2} />
+                    <Area type="monotone" dataKey="value" stroke={lineColor} fill={lineColor} fillOpacity={0.35} />
                     <Line
                       type="monotone"
                       dataKey="value"
@@ -246,15 +250,14 @@ export function TickerDetailChart({ ticker, type, anchorRect, onClose }: Props) 
                     <YAxis tick={{ fill: "var(--neutral-on-background-weak)", fontSize: 10 }} domain={["auto", "auto"]} />
                     <Tooltip
                       contentStyle={{
-                        background: "rgba(255,255,255,0.04)",
-                        backdropFilter: "blur(24px) saturate(1.6)",
-                        border: "1px solid rgba(255,255,255,0.1)",
+                        background: "var(--neutral-surface)",
+                        border: "1px solid var(--neutral-alpha-medium)",
                         borderRadius: 8,
-                        boxShadow: "0 4px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
                         padding: "0.5rem 0.75rem",
                         color: "var(--neutral-on-background-strong)",
                       }}
-                      formatter={(value) => [`$${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, ticker]}
+                      formatter={(value) => [`${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, ticker]}
                     />
                     <Line
                       type="monotone"
