@@ -21,6 +21,7 @@ import { getLogoUrl } from "../lib/logo";
 import { sendMessageWithLogo, sendMessage, answerInlineQuery } from "../lib/telegram";
 import { checkAndConsumeQuota, getQuotaExceededMessage, getRemainingQuota } from "../lib/quota";
 import { generateBatchReport, CompanyData } from "../lib/openrouter";
+import { getPositions } from "../lib/kv-portfolio";
 import { formatPriceBlock, PriceData } from "../lib/price";
 import { getYahooPriceDataFull } from "../lib/yahoo";
 import { searchCrypto, getCryptoQuote, getCryptoHistory, formatCryptoBlock, CRYPTO_ID_MAP } from "../lib/coingecko";
@@ -336,6 +337,7 @@ Escribe ${BOT_USERNAME} y el ticker o nombre de la empresa/ETF/cripto en cualqui
 /link — Vincular con Quartly Dashboard web
 /report — Reporte manual de tus favoritos ahora
 /news — Resumen diario de noticias financieras
+/portfolio — Ver tu portafolio con P&L actual
 /income — Registrar ingreso: /income [cantidad] [categoría] [descripción]
 /expense — Registrar gasto: /expense [cantidad] [categoría] [descripción]
 /invest — Registrar inversión: /invest [cantidad] [ticker] [tipo]
@@ -365,6 +367,7 @@ Escribe ${BOT_USERNAME} y el ticker o nombre de la empresa/ETF/cripto en cualqui
   if (cmd === "/categories") return handleCategoriesCommand(chatId);
   if (cmd === "/export_csv" || cmd === "/export") return handleExportCsvCommand(chatId);
   if (cmd === "/news") return handleNewsCommand(chatId);
+  if (cmd === "/portfolio") return handlePortfolioCommand(chatId);
 }
 
 async function handleMyStocks(chatId: string) {
@@ -859,6 +862,73 @@ async function handleNewsCommand(chatId: string) {
   const { generateDailyNewsSummary } = await import("../lib/news-summary");
   const summary = await generateDailyNewsSummary(chatId);
   await sendMessage(chatId, summary);
+}
+
+async function handlePortfolioCommand(chatId: string) {
+  const positions = await getPositions(chatId);
+  if (positions.length === 0) {
+    await sendMessage(chatId, `📭 No tienes posiciones en tu portafolio.\nAgrega desde la web dashboard o usa /invest`);
+    return;
+  }
+
+  await sendMessage(chatId, `⏳ Obteniendo precios actuales...`);
+
+  const enriched = await Promise.all(
+    positions.map(async (pos) => {
+      let currentPrice: number | null = null;
+      let change1d: number | null = null;
+
+      if (pos.type === "crypto") {
+        const quote = await getCryptoQuote(pos.ticker);
+        currentPrice = quote?.priceUsd ?? null;
+        change1d = quote?.change24h ?? null;
+      } else {
+        const quote = await getQuote(pos.ticker);
+        currentPrice = quote?.c ?? null;
+        change1d = typeof quote?.dp === "number" ? quote.dp : null;
+      }
+
+      const totalCost = pos.buyPrice * pos.quantity;
+      const totalValue = currentPrice !== null ? currentPrice * pos.quantity : null;
+      const pnl = totalValue !== null ? totalValue - totalCost : null;
+      const pnlPct = totalValue !== null && totalCost > 0 ? ((totalValue - totalCost) / totalCost) * 100 : null;
+
+      return { ...pos, currentPrice, change1d, totalCost, totalValue, pnl, pnlPct };
+    })
+  );
+
+  let msg = `📊 *Tu Portafolio (${positions.length} posiciones)*\n\n`;
+  let totalInvested = 0;
+  let totalCurrent = 0;
+
+  for (const p of enriched) {
+    totalInvested += p.totalCost;
+    if (p.totalValue !== null) totalCurrent += p.totalValue;
+
+    const qtyStr = p.quantity === Math.floor(p.quantity)
+      ? p.quantity.toString()
+      : p.quantity.toFixed(4).replace(/\.?0+$/, "");
+    const pnlStr = p.pnl !== null
+      ? `${p.pnl >= 0 ? "🟢" : "🔴"} ${p.pnl >= 0 ? "+" : ""}$${p.pnl.toFixed(2)} (${p.pnlPct !== null ? (p.pnlPct >= 0 ? "+" : "") + p.pnlPct.toFixed(2) + "%" : "N/A"})`
+      : "⚪ N/A";
+    const priceStr = p.currentPrice !== null ? `$${p.currentPrice.toFixed(2)}` : "N/A";
+    const changeStr = p.change1d !== null ? ` (${p.change1d >= 0 ? "+" : ""}${p.change1d.toFixed(2)}%)` : "";
+
+    msg += `*${p.ticker}* (${p.type.toUpperCase()})\n`;
+    msg += `  Qty: ${qtyStr} | Compra: $${p.buyPrice.toFixed(2)} → Invertido: $${p.totalCost.toFixed(2)}\n`;
+    msg += `  Actual: ${priceStr}${changeStr} → Valor: ${p.totalValue !== null ? `$${p.totalValue.toFixed(2)}` : "N/A"}\n`;
+    msg += `  P&L: ${pnlStr}\n\n`;
+  }
+
+  const totalPnl = totalCurrent - totalInvested;
+  const totalPnlPct = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0;
+  const totalEmoji = totalPnl >= 0 ? "🟢" : "🔴";
+
+  msg += `───────────────\n`;
+  msg += `${totalEmoji} *Total:* Invertido $${totalInvested.toFixed(2)} → Valor $${totalCurrent.toFixed(2)}\n`;
+  msg += `P&L: ${totalPnl >= 0 ? "+" : ""}$${totalPnl.toFixed(2)} (${totalPnlPct >= 0 ? "+" : ""}${totalPnlPct.toFixed(2)}%)`;
+
+  await sendMessage(chatId, msg);
 }
 
 function parseFinanceArgs(text: string): { amount: number; category: string; description: string } | null {
