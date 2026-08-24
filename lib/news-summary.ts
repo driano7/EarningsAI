@@ -257,7 +257,7 @@ export async function generateDailyNewsSummary(chatId: string): Promise<string> 
   return msg;
 }
 
-async function generateAISupernota(
+export async function generateAISupernota(
   today: string,
   macros: MacroSerie[],
   marketNews: NewsArticle[],

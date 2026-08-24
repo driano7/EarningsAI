@@ -25,6 +25,7 @@ import { getPositions } from "../lib/kv-portfolio";
 import { formatPriceBlock, PriceData } from "../lib/price";
 import { getYahooPriceDataFull } from "../lib/yahoo";
 import { searchCrypto, getCryptoQuote, getCryptoHistory, formatCryptoBlock, CRYPTO_ID_MAP } from "../lib/coingecko";
+import { getOrBuildDailyCache, getOrBuildPriceCache, getCachedSuperInvestors, formatSuperInvestorsForTelegram, formatMacroForTelegram, formatMarketNewsForTelegram } from "../lib/daily-cache";
 import {
   addTransaction,
   getSummary,
@@ -336,7 +337,8 @@ Escribe ${BOT_USERNAME} y el ticker o nombre de la empresa/ETF/cripto en cualqui
 /mycryptos — Ver y eliminar cryptos de tu watchlist
 /link — Vincular con Quartly Dashboard web
 /report — Reporte manual de tus favoritos ahora
-/news — Resumen diario de noticias financieras
+/news — Resumen diario de noticias financieras (Supernota)
+/superinvestors — Movimientos 13F de superinversores (Smart Money)
 /portfolio — Ver tu portafolio con P&L actual
 /income — Registrar ingreso: /income [cantidad] [categoría] [descripción]
 /expense — Registrar gasto: /expense [cantidad] [categoría] [descripción]
@@ -368,6 +370,7 @@ Escribe ${BOT_USERNAME} y el ticker o nombre de la empresa/ETF/cripto en cualqui
   if (cmd === "/export_csv" || cmd === "/export") return handleExportCsvCommand(chatId);
   if (cmd === "/news") return handleNewsCommand(chatId);
   if (cmd === "/portfolio") return handlePortfolioCommand(chatId);
+  if (cmd === "/superinvestors") return handleSuperInvestorsCommand(chatId);
 }
 
 async function handleMyStocks(chatId: string) {
@@ -859,9 +862,21 @@ async function handleExportCsvCommand(chatId: string) {
 }
 
 async function handleNewsCommand(chatId: string) {
+  const cache = await getOrBuildDailyCache(chatId);
+  if (cache.aiSupernota) {
+    await sendMessage(chatId, cache.aiSupernota);
+    return;
+  }
+  // Fallback to non-AI format
   const { generateDailyNewsSummary } = await import("../lib/news-summary");
   const summary = await generateDailyNewsSummary(chatId);
   await sendMessage(chatId, summary);
+}
+
+async function handleSuperInvestorsCommand(chatId: string) {
+  const changes = await getCachedSuperInvestors();
+  const msg = formatSuperInvestorsForTelegram(changes);
+  await sendMessage(chatId, msg);
 }
 
 async function handlePortfolioCommand(chatId: string) {
@@ -871,33 +886,24 @@ async function handlePortfolioCommand(chatId: string) {
     return;
   }
 
-  await sendMessage(chatId, `⏳ Obteniendo precios actuales...`);
+  // Use cached prices (6h TTL)
+  const priceCache = await getOrBuildPriceCache(chatId);
 
-  const enriched = await Promise.all(
-    positions.map(async (pos) => {
-      let currentPrice: number | null = null;
-      let change1d: number | null = null;
+  const enriched = positions.map((pos) => {
+    const cached = priceCache.prices[pos.ticker];
+    const currentPrice = cached?.current ?? null;
+    const change1d = cached?.change1d ?? null;
 
-      if (pos.type === "crypto") {
-        const quote = await getCryptoQuote(pos.ticker);
-        currentPrice = quote?.priceUsd ?? null;
-        change1d = quote?.change24h ?? null;
-      } else {
-        const quote = await getQuote(pos.ticker);
-        currentPrice = quote?.c ?? null;
-        change1d = typeof quote?.dp === "number" ? quote.dp : null;
-      }
+    const totalCost = pos.buyPrice * pos.quantity;
+    const totalValue = currentPrice !== null ? currentPrice * pos.quantity : null;
+    const pnl = totalValue !== null ? totalValue - totalCost : null;
+    const pnlPct = totalValue !== null && totalCost > 0 ? ((totalValue - totalCost) / totalCost) * 100 : null;
 
-      const totalCost = pos.buyPrice * pos.quantity;
-      const totalValue = currentPrice !== null ? currentPrice * pos.quantity : null;
-      const pnl = totalValue !== null ? totalValue - totalCost : null;
-      const pnlPct = totalValue !== null && totalCost > 0 ? ((totalValue - totalCost) / totalCost) * 100 : null;
+    return { ...pos, currentPrice, change1d, totalCost, totalValue, pnl, pnlPct };
+  });
 
-      return { ...pos, currentPrice, change1d, totalCost, totalValue, pnl, pnlPct };
-    })
-  );
-
-  let msg = `📊 *Tu Portafolio (${positions.length} posiciones)*\n\n`;
+  let msg = `📊 *Tu Portafolio (${positions.length} posiciones)*\n`;
+  msg += `_Precios actualizados hace ${Math.round((Date.now() - priceCache.updatedAt) / 3600000)}h_\n\n`;
   let totalInvested = 0;
   let totalCurrent = 0;
 

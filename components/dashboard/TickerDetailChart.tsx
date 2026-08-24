@@ -38,6 +38,7 @@ const CHART_TYPES = [
 interface Props {
   ticker: string;
   type: "stock" | "etf" | "crypto";
+  anchorRect?: DOMRect | null;
   onClose: () => void;
 }
 
@@ -52,7 +53,7 @@ function formatTimeAgo(timestamp: number): string {
   return `${days}d`;
 }
 
-export function TickerDetailChart({ ticker, type, onClose }: Props) {
+export function TickerDetailChart({ ticker, type, anchorRect, onClose }: Props) {
   const [data, setData] = useState<HistoricalData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -96,34 +97,27 @@ export function TickerDetailChart({ ticker, type, onClose }: Props) {
       : "#ef4444";
   const gridColor = "rgba(255,255,255,0.05)";
 
+  // Calculate popover position
+  const popoverStyle: React.CSSProperties = anchorRect
+    ? {
+        position: "fixed",
+        left: Math.min(anchorRect.left, window.innerWidth - 720),
+        top: anchorRect.bottom + 8,
+        zIndex: 2000,
+        maxWidth: 700,
+        width: "100%",
+      }
+    : { position: "fixed", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" };
+
   return (
     <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 1600,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "16px",
-      }}
+      style={popoverStyle}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background: "rgba(0,0,0,0.88)",
-          zIndex: 1500,
-        }}
-        onClick={onClose}
-      />
-
       <Column
         radius="l"
-        fillWidth
         className="liquid-glass"
         style={{
           position: "relative",
@@ -134,7 +128,6 @@ export function TickerDetailChart({ ticker, type, onClose }: Props) {
           boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
           display: "flex",
           flexDirection: "column",
-          zIndex: 2000,
         }}
       >
         <Row

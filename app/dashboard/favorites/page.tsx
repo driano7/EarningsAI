@@ -127,7 +127,7 @@ export default function FavoritesPage() {
   const [knownUsers, setKnownUsers] = useState<string[]>([]);
   const [showUserPicker, setShowUserPicker] = useState(false);
   const [logoErrors, setLogoErrors] = useState<Set<string>>(new Set());
-  const [selectedTicker, setSelectedTicker] = useState<{ ticker: string; type: "stock" | "etf" | "crypto" } | null>(null);
+  const [selectedTicker, setSelectedTicker] = useState<{ ticker: string; type: "stock" | "etf" | "crypto"; anchorRect?: DOMRect } | null>(null);
   const [suggestions, setSuggestions] = useState<
     Array<{ ticker: string; name: string; type: "stock" | "etf" | "crypto" }>
   >([]);
@@ -466,9 +466,10 @@ export default function FavoritesPage() {
                 <Reveal key={c.ticker} delay={Math.min(activeItems.indexOf(item) * 0.04, 0.3)}>
                 <Card padding="m" radius="m" fillWidth
                   style={{ cursor: "pointer" }}
-                  onClick={() => setSelectedTicker({ ticker: c.ticker, type: "crypto" })}
                 >
-                  <Row vertical="center" horizontal="between">
+                  <Row vertical="center" horizontal="between" onClick={(e) => {
+                      setSelectedTicker({ ticker: c.ticker, type: "crypto", anchorRect: e.currentTarget.getBoundingClientRect() });
+                    }}>
                     <Row gap="s" vertical="center">
                       {detail?.logo && !logoErrors.has(c.ticker) && (
                         <img
@@ -515,9 +516,10 @@ export default function FavoritesPage() {
                 <Reveal key={e.ticker} delay={Math.min(activeItems.indexOf(item) * 0.04, 0.3)}>
                 <Card padding="m" radius="m" fillWidth
                   style={{ cursor: "pointer" }}
-                  onClick={() => setSelectedTicker({ ticker: e.ticker, type: "etf" })}
                 >
-                  <Row vertical="center" horizontal="between">
+                  <Row vertical="center" horizontal="between" onClick={(ev) => {
+                      setSelectedTicker({ ticker: e.ticker, type: "etf", anchorRect: ev.currentTarget.getBoundingClientRect() });
+                    }}>
                     <Row gap="s" vertical="center">
                       {detail?.logo && !logoErrors.has(e.ticker) && (
                         <img
@@ -559,9 +561,10 @@ export default function FavoritesPage() {
               <Reveal key={s.ticker} delay={Math.min(activeItems.indexOf(item) * 0.04, 0.3)}>
               <Card padding="m" radius="m" fillWidth
                 style={{ cursor: "pointer" }}
-                onClick={() => setSelectedTicker({ ticker: s.ticker, type: "stock" })}
               >
-                <Row vertical="stretch" horizontal="between">
+                <Row vertical="stretch" horizontal="between" onClick={(ev) => {
+                    setSelectedTicker({ ticker: s.ticker, type: "stock", anchorRect: ev.currentTarget.getBoundingClientRect() });
+                  }}>
                   <Column gap="s" fillWidth>
                     <Row gap="s" vertical="center">
                       {detail?.logo && !logoErrors.has(s.ticker) && (
@@ -637,6 +640,7 @@ export default function FavoritesPage() {
         <TickerDetailChart
           ticker={selectedTicker.ticker}
           type={selectedTicker.type}
+          anchorRect={selectedTicker.anchorRect}
           onClose={() => setSelectedTicker(null)}
         />
       )}

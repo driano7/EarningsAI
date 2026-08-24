@@ -92,15 +92,16 @@ export default function Header() {
         paddingY="16"
         vertical="center"
         horizontal="between"
+        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}
       >
         {/* ── LEFT: Logo ────────────────────── */}
-        <Row gap="12" vertical="center">
+        <Row gap="12" vertical="center" style={{ flex: "0 0 auto" }}>
           <Heading variant="label-strong-l">⚡️📈</Heading>
           <Heading variant="label-strong-m">Quartly</Heading>
         </Row>
 
         {/* ── CENTER: Nav ───────────────────── */}
-        <Row gap="4" horizontal="center">
+        <Row gap="4" horizontal="center" style={{ flex: "1 1 auto", justifyContent: "center", minWidth: 0 }}>
           {navItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
             return (
@@ -122,11 +123,11 @@ export default function Header() {
         </Row>
 
         {/* ── RIGHT: Time + Balance + Theme ─── */}
-        <Row gap="24" vertical="center">
-          <Text variant="body-default-s" onBackground="neutral-weak">
+        <Row gap="16" vertical="center" style={{ flex: "0 0 auto", justifyContent: "flex-end" }}>
+          <Text variant="body-default-s" onBackground="neutral-weak" style={{ whiteSpace: "nowrap" }}>
             {time}
           </Text>
-          <Badge background="brand-alpha-medium" onBackground="brand-strong">
+          <Badge background="brand-alpha-medium" onBackground="brand-strong" style={{ whiteSpace: "nowrap" }}>
             {balance !== null ? formatCurrency(balance) : "—"}
           </Badge>
           <AnimatedThemeToggle />

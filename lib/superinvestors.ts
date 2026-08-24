@@ -83,13 +83,21 @@ const EDGAR_HEADERS = {
 
 async function fetchWithRetry(url: string, retries = 3): Promise<Response> {
   for (let i = 0; i < retries; i++) {
-    const res = await fetch(url, { headers: EDGAR_HEADERS });
-    if (res.ok || res.status === 404) return res;
-    if (res.status === 429) {
-      await new Promise((r) => setTimeout(r, 2000 * (i + 1)));
-      continue;
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+      const res = await fetch(url, { headers: EDGAR_HEADERS, signal: controller.signal });
+      clearTimeout(timeout);
+      if (res.ok || res.status === 404) return res;
+      if (res.status === 429) {
+        await new Promise((r) => setTimeout(r, 2000 * (i + 1)));
+        continue;
+      }
+      throw new Error(`SEC EDGAR error: ${res.status} ${res.statusText}`);
+    } catch (err) {
+      if (i === retries - 1) throw err;
+      await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
     }
-    throw new Error(`SEC EDGAR error: ${res.status} ${res.statusText}`);
   }
   throw new Error(`SEC EDGAR max retries exceeded`);
 }
@@ -317,11 +325,24 @@ export async function getAllSuperInvestorChanges(): Promise<SuperInvestorChanges
     Object.keys(SUPERINVESTORS).map((k) => getSuperInvestorChanges(k as SuperInvestor))
   );
 
-  return results
+  const successful = results
     .filter((r): r is PromiseFulfilledResult<SuperInvestorChanges> =>
       r.status === "fulfilled" && r.value !== null
     )
     .map((r) => r.value);
+
+  const failed = results
+    .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+    .map((r) => r.reason);
+
+  if (failed.length > 0) {
+    console.error("[superinvestors] Failed to fetch some investors:", failed);
+  }
+  if (successful.length === 0) {
+    console.warn("[superinvestors] No investor data fetched successfully");
+  }
+
+  return successful;
 }
 
 function formatValue(value: number): string {

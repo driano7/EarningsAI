@@ -44,6 +44,25 @@ async function fetchFinnhubHistory(ticker: string, days: number): Promise<Array<
   }
 }
 
+async function fetchTwelveDataHistory(ticker: string, days: number): Promise<Array<{ date: string; value: number }> | null> {
+  if (!TWELVE_KEY) return null;
+
+  // TwelveData has outputsize limits (max ~100 for free tier, ~5000 for paid)
+  // For longer periods, use a larger interval or chunk requests
+  const maxOutputSize = 5000; // Adjust based on your plan
+  const outputSize = Math.min(days, maxOutputSize);
+
+  try {
+    const twelveData = await getHistoricalCloses(ticker, outputSize);
+    if (twelveData && twelveData.length > 0) {
+      return twelveData;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
 export async function GET(req: NextRequest) {
   const ticker = req.nextUrl.searchParams.get("ticker")?.toUpperCase();
   const period = req.nextUrl.searchParams.get("period") || "1y";
@@ -61,20 +80,18 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: true, data: cached });
     }
 
-    // Try Twelve Data first (better for historical data)
-    if (TWELVE_KEY) {
-      const twelveData = await getHistoricalCloses(ticker, days);
-      if (twelveData && twelveData.length > 0) {
-        await kv.set(cacheKey, twelveData, { ex: 86400 });
-        return NextResponse.json({ ok: true, data: twelveData });
-      }
-    }
-
-    // Fallback to Finnhub
+    // Try Finnhub first (supports arbitrary date ranges via from/to)
     const finnhubData = await fetchFinnhubHistory(ticker, days);
     if (finnhubData && finnhubData.length > 0) {
       await kv.set(cacheKey, finnhubData, { ex: 86400 });
       return NextResponse.json({ ok: true, data: finnhubData });
+    }
+
+    // Fallback to Twelve Data
+    const twelveData = await fetchTwelveDataHistory(ticker, days);
+    if (twelveData && twelveData.length > 0) {
+      await kv.set(cacheKey, twelveData, { ex: 86400 });
+      return NextResponse.json({ ok: true, data: twelveData });
     }
 
     return NextResponse.json({ ok: false, error: "No data available" }, { status: 404 });
