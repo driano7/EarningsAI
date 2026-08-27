@@ -17,7 +17,7 @@ import { Reveal } from "@/components/charts/Reveal";
 import type { NewsArticle } from "@/lib/news";
 import type { FinnhubNews } from "@/lib/finnhub";
 
-type TabType = "supernota" | "market" | "ticker" | "finnhub" | "favai";
+type TabType = "supernota" | "superinvestors" | "market" | "ticker" | "finnhub" | "favai";
 type NewsItem = (NewsArticle | FinnhubNews) & { _source: string; _ticker?: string };
 
 interface SummaryEntry {
@@ -63,6 +63,10 @@ export default function NewsPage() {
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
+  const [superHistory, setSuperHistory] = useState<Record<string, any[]> | null>(null);
+  const [superLoading, setSuperLoading] = useState(false);
+  const [superData, setSuperData] = useState<any | null>(null);
+
   useEffect(() => {
     const stored = localStorage.getItem("quartly_chatId") || "default";
     setChatId(stored);
@@ -102,6 +106,18 @@ export default function NewsPage() {
       .catch(() => setSummaries([]))
       .finally(() => setSummaryLoading(false));
   }, [chatId, tab]);
+
+  useEffect(() => {
+    if (tab !== "superinvestors") return;
+    setSuperLoading(true);
+    Promise.all([
+      fetch(`/api/dashboard/superinversores`).then((r) => r.json()).catch(() => ({ ok: false })),
+      fetch(`/api/dashboard/superinversores/history`).then((r) => r.json()).catch(() => ({ ok: false })),
+    ]).then(([curr, hist]) => {
+      if (curr?.ok) setSuperData(curr);
+      if (hist?.ok) setSuperHistory(hist.history);
+    }).finally(() => setSuperLoading(false));
+  }, [tab]);
 
   useEffect(() => {
     if (!chatId || tab !== "favai") return;
@@ -195,6 +211,7 @@ export default function NewsPage() {
       <Row gap="s" fillWidth wrap>
         {([
           { key: "supernota", label: "📰 Supernota" },
+          { key: "superinvestors", label: "🏛 Superinversores" },
           { key: "favai", label: "🧠 Favoritos + Análisis" },
           { key: "market", label: "🌐 Mercado" },
           { key: "ticker", label: "📊 Mis Favoritos" },
@@ -271,6 +288,55 @@ export default function NewsPage() {
                 Se genera automaticamente cada dia a las 8 AM
               </Text>
             </Column>
+          )}
+        </Column>
+      )}
+
+      {tab === "superinvestors" && (
+        <Column gap="m" fillWidth>
+          {superLoading ? (
+            <Column gap="m">{[1,2,3].map((i)=>(<Skeleton key={i} shape="block" height="l" fillWidth radius="m" />))}</Column>
+          ) : superData?.changes?.length > 0 ? (
+            <Column gap="l" fillWidth>
+              <Row gap="s" fillWidth wrap>
+                <Badge background="brand-alpha-weak" onBackground="brand-strong" paddingX="s" paddingY="xs"><Text variant="label-default-xs">Trimestre: {superData.date}</Text></Badge>
+                <Text variant="label-default-xs" onBackground="neutral-weak">Se guarda histórico 1 año (4 trimestres) en KV · {superData.changes.length} inversores</Text>
+              </Row>
+              {superData.changes.map((inv: any)=>(
+                <Column key={inv.investor} gap="s" padding="m" radius="l" style={{ border:"1px solid var(--neutral-alpha-weak)"}} className="liquid-glass-sm">
+                  <Row gap="s" vertical="center" wrap>
+                    <Badge background={inv.investor==="BERKSHIRE"?"brand-alpha-weak": inv.investor==="PERSHING_SQUARE"?"accent-alpha-weak":"neutral-alpha-weak"} onBackground="neutral-strong" paddingX="s" paddingY="xs"><Text variant="label-default-xs">{inv.investorName}</Text></Badge>
+                    <Text variant="label-default-xs" onBackground="neutral-weak">{inv.investor==="BERKSHIRE"?"S&P 500 / Value": inv.investor==="PERSHING_SQUARE"?"Nasdaq / Big Tech":"Semis / IA"} · {new Date(inv.filedAt).toLocaleDateString("es-MX")}</Text>
+                  </Row>
+                  {[
+                    { label:"🟢 NUEVAS", data: inv.topNew },
+                    { label:"📈 AUMENTADAS", data: inv.topIncreased },
+                    { label:"📉 REDUCIDAS", data: inv.topDecreased },
+                    { label:"🔴 SALIDA TOTAL", data: inv.topSoldOut },
+                  ].map((sec)=> sec.data.length>0 && (
+                    <Column key={sec.label} gap="xs">
+                      <Text variant="label-strong-xs" style={{ color:"var(--neutral-on-background-strong)"}}>{sec.label}</Text>
+                      {sec.data.map((h:any)=>(
+                        <Row key={`${inv.investor}-${h.ticker}`} gap="s" vertical="center" wrap style={{ paddingLeft:8}}>
+                          <Text variant="label-strong-s" style={{ minWidth:70 }}>{h.ticker}</Text>
+                          <Text variant="label-default-xs" onBackground="neutral-weak" style={{ flex:1, minWidth:120}}>{h.name}</Text>
+                          <Text variant="label-default-xs" style={{ color: h.action==="DECREASED"||h.action==="SOLD_OUT"?"var(--danger-medium)":"var(--success-medium)"}}>{h.changePct>=0?`+${h.changePct.toFixed(1)}%`:`${h.changePct.toFixed(1)}%`}</Text>
+                          <Text variant="label-default-xs" onBackground="neutral-weak">{h.currShares>0? `${h.currShares.toLocaleString()} acc · $${(h.currValue/1e3).toFixed(0)}K` : `${h.prevShares.toLocaleString()} vendidas`}</Text>
+                        </Row>
+                      ))}
+                    </Column>
+                  ))}
+                  {superHistory && (superHistory as any)[inv.investor]?.length>1 && (
+                    <Column gap="xs" style={{ marginTop:8, borderTop:"1px solid var(--neutral-alpha-weak)", paddingTop:8}}>
+                      <Text variant="label-default-xs" onBackground="neutral-weak">Histórico 1 año ({(superHistory as any)[inv.investor].length} trimestres): {(superHistory as any)[inv.investor].map((f:any)=> f.quarterEnd).join(" · ")}</Text>
+                    </Column>
+                  )}
+                </Column>
+              ))}
+              <Text variant="label-default-xs" onBackground="neutral-weak" style={{ textAlign:"center"}}>Datos SEC EDGAR 13F-HR · Cada trimestre 45 días después del cierre</Text>
+            </Column>
+          ) : (
+            <Column fillWidth horizontal="center" padding="xl" gap="s"><Text onBackground="neutral-weak">Sin datos 13F aún — se poblará al próximo filing o via cron</Text><Text variant="label-default-xs" onBackground="neutral-weak">Berkshire 0001067983 · Pershing 0001336528 · Duquesne 0001543152</Text></Column>
           )}
         </Column>
       )}

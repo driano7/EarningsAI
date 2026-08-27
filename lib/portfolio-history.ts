@@ -65,10 +65,13 @@ export function filterByPeriod(movements: PortfolioMovement[], period: string): 
   if (period === "all") return movements;
   const now = new Date();
   const daysMap: Record<string, number> = {
+    "1d": 1,
+    "1w": 7,
     "1m": 30,
     "3m": 90,
     "6m": 180,
     "1y": 365,
+    "3y": 1095,
   };
   const days = daysMap[period] || 365;
   const cutoff = new Date(now.getTime() - days * 86400000);

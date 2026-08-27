@@ -33,6 +33,7 @@ const CHART_TYPES = [
   { label: "Linea", value: "line" },
   { label: "Area", value: "area" },
   { label: "Barras", value: "bar" },
+  { label: "Velas", value: "candle" },
 ];
 
 interface Props {
@@ -55,11 +56,12 @@ function formatTimeAgo(timestamp: number): string {
 
 export function TickerDetailChart({ ticker, type, anchorRect, onClose }: Props) {
   const [data, setData] = useState<HistoricalData[]>([]);
+  const [ohlc, setOhlc] = useState<Array<{ date: string; open: number; high: number; low: number; close: number }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
   const [period, setPeriod] = useState<string>("1y");
-  const [chartType, setChartType] = useState<"line" | "area" | "bar">("line");
+  const [chartType, setChartType] = useState<"line" | "area" | "bar" | "candle">("line");
   const [dataTimestamp, setDataTimestamp] = useState<number>(0);
   const [mounted, setMounted] = useState(false);
 
@@ -69,6 +71,27 @@ export function TickerDetailChart({ ticker, type, anchorRect, onClose }: Props) 
 
   useEffect(() => {
     if (!mounted) return;
+    if (chartType === "candle") {
+      setLoading(true);
+      setError("");
+      const ep = type === "crypto"
+        ? `/api/dashboard/favorites/crypto/ohlc?ticker=${ticker}&period=${period}`
+        : `/api/dashboard/favorites/quote/ohlc?ticker=${ticker}&period=${period}`;
+      fetch(ep)
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.ok && d.data && d.data.length > 0) {
+            setOhlc(d.data);
+            setCurrentPrice(d.data[d.data.length - 1].close);
+            setDataTimestamp(Date.now());
+          } else {
+            setError(d.error || "No hay datos OHLC");
+          }
+        })
+        .catch(() => setError("Error cargando velas"))
+        .finally(() => setLoading(false));
+      return;
+    }
     setLoading(true);
     setError("");
 
@@ -89,7 +112,7 @@ export function TickerDetailChart({ ticker, type, anchorRect, onClose }: Props) 
       })
       .catch(() => setError("Error cargando datos"))
       .finally(() => setLoading(false));
-  }, [ticker, type, period]);
+  }, [ticker, type, period, chartType, mounted]);
 
   const change = data.length >= 2
     ? ((data[data.length - 1].value - data[data.length - 2].value) / data[data.length - 2].value) * 100
@@ -102,6 +125,40 @@ export function TickerDetailChart({ ticker, type, anchorRect, onClose }: Props) 
       ? "#22c55e"
       : "#ef4444";
   const gridColor = "rgba(255,255,255,0.05)";
+
+  // Lightweight-charts container for velas
+  const candleRef = useMemo(() => ({ current: null as HTMLDivElement | null }), []);
+  const [candleContainer, setCandleContainer] = useState<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (chartType !== "candle" || !candleContainer || ohlc.length === 0) return;
+    let chart: any;
+    let series: any;
+    (async () => {
+      try {
+        const { createChart } = await import("lightweight-charts");
+        candleContainer.innerHTML = "";
+        chart = createChart(candleContainer, {
+          width: candleContainer.clientWidth,
+          height: 400,
+          layout: { background: { color: "transparent" }, textColor: "#94a3b8" },
+          grid: { vertLines: { color: "rgba(255,255,255,0.05)" }, horzLines: { color: "rgba(255,255,255,0.05)" } },
+          timeScale: { borderColor: "rgba(255,255,255,0.1)" },
+          rightPriceScale: { borderColor: "rgba(255,255,255,0.1)" },
+        });
+        series = chart.addCandlestickSeries({ upColor: "#22c55e", downColor: "#ef4444", borderVisible: false, wickUpColor: "#22c55e", wickDownColor: "#ef4444" });
+        const lwcData = ohlc.map(d => ({ time: d.date as any, open: d.open, high: d.high, low: d.low, close: d.close }));
+        series.setData(lwcData);
+        chart.timeScale().fitContent();
+        const ro = new ResizeObserver(() => { if (candleContainer) chart.applyOptions({ width: candleContainer.clientWidth }); });
+        ro.observe(candleContainer);
+        return () => { ro.disconnect(); chart.remove(); };
+      } catch (e) {
+        console.error("lightweight-charts error", e);
+      }
+    })();
+    return () => { try { chart?.remove(); } catch {} };
+  }, [chartType, candleContainer, ohlc]);
 
   // Calculate popover position (client-side only)
   const popoverStyle: React.CSSProperties = anchorRect && mounted
@@ -178,8 +235,8 @@ export function TickerDetailChart({ ticker, type, anchorRect, onClose }: Props) 
               id="chart-type-select"
               className="liquid-select"
               value={chartType}
-              onChange={(e) => setChartType(e.target.value as "line" | "area" | "bar")}
-              style={{ width: 90, height: 36, fontSize: 13 }}
+              onChange={(e) => setChartType(e.target.value as any)}
+              style={{ width: 110, height: 36, fontSize: 13 }}
             >
               {CHART_TYPES.map((c) => (
                 <option key={c.value} value={c.value}>{c.label}</option>
@@ -196,6 +253,11 @@ export function TickerDetailChart({ ticker, type, anchorRect, onClose }: Props) 
             <Column fillWidth horizontal="center" padding="xl">
               <Text variant="body-default-s" onBackground="neutral-weak">{error}</Text>
             </Column>
+          ) : chartType === "candle" ? (
+            <div style={{ ...CHART_GLASS_STYLE, height: 400, padding: 4 }}>
+              <div ref={(el) => setCandleContainer(el)} style={{ width: "100%", height: "100%" }} />
+              <Text variant="label-default-xs" onBackground="neutral-weak" style={{ textAlign: "center", marginTop: 4 }}>Velas vía TradingView lightweight-charts · OHLC real (TwelveData/Finnhub/CoinGecko)</Text>
+            </div>
           ) : (
             <div style={CHART_GLASS_STYLE}>
               <ResponsiveContainer width="100%" height={400}>

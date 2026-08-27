@@ -41,12 +41,23 @@ export function usePortfolioHistory(): UsePortfolioHistoryResult {
   const [period, setPeriod] = useState("all");
   const [refreshKey, setRefreshKey] = useState(0);
 
+  const [resolvedChatId, setResolvedChatId] = useState<string | null>(null);
+
   const chatId = typeof window !== "undefined"
-    ? localStorage.getItem("quartly_chatId") || "default"
+    ? resolvedChatId || localStorage.getItem("quartly_chatId") || "default"
     : "default";
 
   useEffect(() => {
-    if (!chatId || chatId === "default") { setLoading(false); return; }
+    if (typeof window !== "undefined" && !resolvedChatId && !localStorage.getItem("quartly_chatId")) {
+      fetch("/api/auth/users").then(r=>r.json()).then(d=>{
+        if(d.ok && d.users?.length===1){ localStorage.setItem("quartly_chatId", d.users[0]); setResolvedChatId(d.users[0]); }
+        else if(d.ok && d.users?.length>1){ setLoading(false); }
+      }).catch(()=>{});
+    }
+  }, [resolvedChatId]);
+
+  useEffect(() => {
+    if (!chatId || chatId === "default") { /* espera a resolver */ if(resolvedChatId===null) return; setLoading(false); return; }
     setLoading(true);
     fetch(`/api/dashboard/portfolio/history?chatId=${chatId}&period=${period}`)
       .then((r) => r.json())

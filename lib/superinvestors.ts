@@ -57,7 +57,7 @@ export type SuperInvestor =
   | "PERSHING_SQUARE"
   | "DUQUESNE";
 
-const SUPERINVESTORS: Record<SuperInvestor, { cik: string; name: string; focus: string }> = {
+export const SUPERINVESTORS: Record<SuperInvestor, { cik: string; name: string; focus: string }> = {
   BERKSHIRE: {
     cik: "0001067983",
     name: "Berkshire Hathaway",
@@ -210,7 +210,8 @@ async function fetch13FData(cik: string, quarterEnd: string): Promise<Filing | n
     totalValue,
   };
 
-  await kv.set(cacheKey, filing, { ex: 90 * 86400 }); // 90 days cache
+  await kv.set(cacheKey, filing, { ex: 365 * 86400 });
+  await saveSuperInvestorHistoryEntry(cik, filing);
   return filing;
 }
 
@@ -383,4 +384,61 @@ export function formatSuperInvestorForPrompt(changes: SuperInvestorChanges): str
   }
 
   return text;
+}
+
+// ── Historial 1 año (4 trimestres) estilo KV similar a supernota ──
+const HISTORY_LIMIT = 4;
+const HISTORY_TTL = 365 * 86400;
+const historyIndexKey = (cik: string) => `superinvestor:history:idx:${cik}`;
+const historyEntryKey = (cik: string, quarterEnd: string) => `superinvestor:history:${cik}:${quarterEnd}`;
+
+async function saveSuperInvestorHistoryEntry(cik: string, filing: Filing): Promise<void> {
+  const entryKey = historyEntryKey(cik, filing.quarterEnd);
+  await kv.set(entryKey, filing, { ex: HISTORY_TTL });
+  try {
+    const idxKey = historyIndexKey(cik);
+    const index = (await kv.get<string[]>(idxKey)) || [];
+    if (!index.includes(filing.quarterEnd)) {
+      index.push(filing.quarterEnd);
+      index.sort((a, b) => b.localeCompare(a)); // más reciente primero
+      const trimmed = index.slice(0, HISTORY_LIMIT);
+      await kv.set(idxKey, trimmed, { ex: HISTORY_TTL });
+      for (const stale of index.slice(HISTORY_LIMIT)) {
+        await kv.del(historyEntryKey(cik, stale)).catch(() => {});
+      }
+    }
+  } catch (err) {
+    console.error(`[superinvestors] saveHistory failed ${cik}:`, err);
+  }
+}
+
+export async function getSuperInvestorHistory(investor: SuperInvestor): Promise<Filing[]> {
+  const cik = SUPERINVESTORS[investor].cik;
+  try {
+    const idxKey = historyIndexKey(cik);
+    const index = (await kv.get<string[]>(idxKey)) || [];
+    if (index.length === 0) {
+      // fallback: intenta un filing actual
+      const q = getQuarterEnd();
+      const f = await kv.get<Filing>(`superinvestor:13f:${cik}:${q}`);
+      return f ? [f] : [];
+    }
+    const entries: Filing[] = [];
+    for (const q of index) {
+      const f = await kv.get<Filing>(historyEntryKey(cik, q));
+      if (f) entries.push(f);
+    }
+    return entries.sort((a, b) => b.quarterEnd.localeCompare(a.quarterEnd));
+  } catch (err) {
+    console.error(`[superinvestors] getHistory failed ${cik}:`, err);
+    return [];
+  }
+}
+
+export async function getAllSuperInvestorsHistory(): Promise<Record<SuperInvestor, Filing[]>> {
+  const result = {} as Record<SuperInvestor, Filing[]>;
+  for (const k of Object.keys(SUPERINVESTORS) as SuperInvestor[]) {
+    result[k] = await getSuperInvestorHistory(k);
+  }
+  return result;
 }

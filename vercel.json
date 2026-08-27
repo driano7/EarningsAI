@@ -7,7 +7,8 @@
     { "path": "/api/cron-weekly",    "schedule": "0 14 * * 1" },
     { "path": "/api/cron-news",      "schedule": "0 8 * * 1-5" },
     { "path": "/api/cron-earnings",  "schedule": "0 6 * * *" },
-    { "path": "/api/cron-sofipos",   "schedule": "0 12 * * 0" }
+    { "path": "/api/cron-sofipos",   "schedule": "0 12 * * 0" },
+    { "path": "/api/cron-calendar-refresh", "schedule": "0 6 */10 * * *" }
   ],
   "functions": {
     "api/webhook.ts": { "maxDuration": 60 },
@@ -17,6 +18,7 @@
     "api/cron-weekly.ts": { "maxDuration": 300 },
     "api/cron-news.ts": { "maxDuration": 300 },
     "api/cron-earnings.ts": { "maxDuration": 300 },
-    "api/cron-sofipos.ts": { "maxDuration": 300 }
+    "api/cron-sofipos.ts": { "maxDuration": 300 },
+    "api/cron-calendar-refresh.ts": { "maxDuration": 300 }
   }
 }
