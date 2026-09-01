@@ -7,7 +7,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Column, Row, Flex, Heading, Text, Button, Grid } from "@once-ui-system/core";
+import { Column, Row, Flex, Heading, Text, Button, Grid, Card, Badge } from "@once-ui-system/core";
 import PortfolioTable from "@/components/dashboard/PortfolioTable";
 import AddPositionModal from "@/components/dashboard/AddPositionModal";
 import type { PortfolioPosition } from "@/lib/types";
@@ -25,6 +25,12 @@ export default function PortfolioPage() {
   interface PositionPrice { ticker: string; currentPrice: number | null; }
   const [positionPrices, setPositionPrices] = useState<PositionPrice[]>([]);
   const [pricesLoading, setPricesLoading] = useState(false);
+  const [audit, setAudit] = useState<any[]>([]);
+  const refreshAudit = useCallback(async () => {
+    try { const r = await fetch(`/api/dashboard/audit/history?chatId=${chatId}`); const j = await r.json(); if (j.ok) setAudit(j.history); } catch {}
+  }, [chatId]);
+  useEffect(() => { refreshAudit(); const id = setInterval(refreshAudit, 30000); return () => clearInterval(id); }, [refreshAudit]);
+  useEffect(() => { refreshAudit(); }, [positions.length]);
 
   const fetchPositions = useCallback(async () => {
     try {
@@ -114,6 +120,7 @@ export default function PortfolioPage() {
       setShowModal(false);
       setEditPos(null);
       fetchPositions();
+      refreshAudit();
     } catch { /* ignore */ }
   }
 
@@ -125,6 +132,7 @@ export default function PortfolioPage() {
         body: JSON.stringify({ id }),
       });
       fetchPositions();
+      refreshAudit();
     } catch { /* ignore */ }
   }
 
@@ -158,6 +166,7 @@ export default function PortfolioPage() {
       setShowSell(false);
       setEditPos(null);
       fetchPositions();
+      refreshAudit();
     } catch { /* ignore */ }
   }
 
@@ -262,6 +271,39 @@ export default function PortfolioPage() {
           </Grid>
         </Column>
       )}
+
+      {/* ── Audit History (siempre visible, append-only) ── */}
+      <Column gap="s" style={{ marginTop: 8 }}>
+        <Row vertical="center" horizontal="between">
+          <Heading variant="heading-strong-m">Historial de Auditoría — Cambios</Heading>
+          <Text variant="label-default-xs" onBackground="neutral-weak">{audit.length} registros · nunca se eliminan</Text>
+        </Row>
+        <Card padding="s" radius="m" fillWidth>
+          <div style={{ overflowX: "auto", maxHeight: 380, overflowY: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem" }}>
+              <thead style={{ position: "sticky", top: 0, background: "var(--neutral-background)", zIndex: 1 }}>
+                <tr style={{ borderBottom: "1px solid var(--neutral-alpha-medium)" }}>
+                  {["Fecha y hora", "Cambio / Dónde", "Método", "SO / Navegador"].map((h) => (
+                    <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "var(--neutral-on-background-weak)", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {audit.length === 0 ? (
+                  <tr><td colSpan={4} style={{ padding: "16px", textAlign: "center", color: "var(--neutral-on-background-weak)" }}>Sin auditoría aún — aquí verás cada cambio manual o del chatbot con SO/navegador, y nunca se borrará.</td></tr>
+                ) : audit.slice(0, 200).map((a) => (
+                  <tr key={a.id} style={{ borderBottom: "1px solid var(--neutral-alpha-weak)" }}>
+                    <td style={{ padding: "8px 10px", whiteSpace: "nowrap" }}>{a.dateTime}<br/><span style={{ color:"var(--neutral-on-background-weak)", fontSize:"0.72rem"}}>{a.timestamp.slice(0,10)}</span></td>
+                    <td style={{ padding: "8px 10px", maxWidth: 320 }}><span style={{ fontWeight:600 }}>{a.change}</span><br/><span style={{ color:"var(--neutral-on-background-weak)" }}>{a.where}</span></td>
+                    <td style={{ padding: "8px 10px" }}><Badge textVariant="label-default-xs" color={a.method==="chatbot"?"brand":"neutral"}>{a.method==="chatbot"?"🤖 chatbot":"👤 manual"}</Badge></td>
+                    <td style={{ padding: "8px 10px", whiteSpace:"nowrap" }}>{a.os} / {a.browser}<br/><span style={{ color:"var(--neutral-on-background-weak)", fontSize:"0.7rem"}} title={a.userAgent}>{a.userAgent.slice(0,60)}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </Column>
 
       <AddPositionModal
         open={showModal}

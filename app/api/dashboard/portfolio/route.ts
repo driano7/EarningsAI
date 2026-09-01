@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
   };
 
   await addPosition(chatId, position);
+  try { const { addAuditEntry } = await import("@/lib/audit-history"); const ua = req.headers.get("user-agent") || "unknown"; const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim(); await addAuditEntry({ chatId, change: `Creó posición ${position.ticker} ${position.type} $${position.buyPrice} x${position.quantity}`, where: "portfolio", method: "manual", userAgent: ua, ip }); } catch {}
   return NextResponse.json({ ok: true, position });
 }
 
@@ -91,6 +92,7 @@ export async function PUT(req: NextRequest) {
   if (!ok) {
     return NextResponse.json({ ok: false, error: "Position not found" }, { status: 404 });
   }
+  try { const { addAuditEntry } = await import("@/lib/audit-history"); const ua = req.headers.get("user-agent") || "unknown"; const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim(); await addAuditEntry({ chatId, change: `Actualizó posición ${body.id} ${body.ticker||""}`, where: "portfolio", method: "manual", userAgent: ua, ip }); } catch {}
   return NextResponse.json({ ok: true });
 }
 
@@ -108,5 +110,6 @@ export async function DELETE(req: NextRequest) {
   if (!ok) {
     return NextResponse.json({ ok: false, error: "Position not found" }, { status: 404 });
   }
+  try { const { addAuditEntry } = await import("@/lib/audit-history"); const ua = req.headers.get("user-agent") || "unknown"; const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim(); await addAuditEntry({ chatId, change: `Eliminó posición ${body.id}`, where: "portfolio", method: "manual", userAgent: ua, ip }); } catch {}
   return NextResponse.json({ ok: true });
 }
