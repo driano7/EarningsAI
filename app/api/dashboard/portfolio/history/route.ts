@@ -57,6 +57,15 @@ export async function POST(req: NextRequest) {
   };
 
   await addMovement(movement);
+  // audit log append-only
+  try {
+    const { addAuditEntry } = await import("@/lib/audit-history");
+    const ua = req.headers.get("user-agent") || "unknown";
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+    const where = (body.where as string) || "portfolio-analytics";
+    const method = (body.method as string) || "manual";
+    await addAuditEntry({ chatId, change: `Creó movimiento ${movement.type} ${movement.ticker} $${movement.amount} x${movement.quantity}`, where: where as any, method: method as any, userAgent: ua, ip });
+  } catch {}
   return NextResponse.json({ ok: true, movement });
 }
 
@@ -79,6 +88,12 @@ export async function PUT(req: NextRequest) {
   if (!ok) {
     return NextResponse.json({ ok: false, error: "Movement not found" }, { status: 404 });
   }
+  try {
+    const { addAuditEntry } = await import("@/lib/audit-history");
+    const ua = req.headers.get("user-agent") || "unknown";
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+    await addAuditEntry({ chatId: body.chatId, change: `Actualizó movimiento ${body.id}`, where: "portfolio-analytics", method: "manual", userAgent: ua, ip });
+  } catch {}
   return NextResponse.json({ ok: true });
 }
 
@@ -93,5 +108,11 @@ export async function DELETE(req: NextRequest) {
   if (!ok) {
     return NextResponse.json({ ok: false, error: "Movement not found" }, { status: 404 });
   }
+  try {
+    const { addAuditEntry } = await import("@/lib/audit-history");
+    const ua = req.headers.get("user-agent") || "unknown";
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+    await addAuditEntry({ chatId, change: `Eliminó movimiento ${id}`, where: "portfolio-analytics", method: "manual", userAgent: ua, ip });
+  } catch {}
   return NextResponse.json({ ok: true });
 }

@@ -752,6 +752,7 @@ async function handleInvestCommand(chatId: string, text: string) {
 
   const investMsg = "📈 *Inversión registrada*\nCantidad: $" + amount.toLocaleString() + "\nActivo: " + ticker + " (" + tipo + ")\n✅ Agregado a tu watchlist de " + (tipo === "crypto" ? "cryptos" : "acciones") + ".";
   await sendMessage(chatId, investMsg);
+  try { const { addAuditEntry } = await import("../lib/audit-history"); await addAuditEntry({ chatId, change: `Inversión ${ticker} $${amount} (${tipo})`, where: "telegram", method: "chatbot", userAgent: "TelegramBot" }); } catch {}
 }
 
 async function handleSummaryCommand(chatId: string, mes?: string) {

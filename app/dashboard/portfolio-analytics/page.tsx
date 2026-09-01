@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { Column, Row, Heading, Text, Badge, Card, Grid, Button, IconButton } from "@once-ui-system/core";
 import { usePortfolioHistory } from "@/hooks/usePortfolioHistory";
 import { formatCurrency, formatPercent } from "@/lib/formatFinance";
@@ -63,6 +63,14 @@ export default function PortfolioAnalyticsPage() {
     notes: "",
   });
   const chartRef = useRef<HTMLDivElement>(null);
+  const [audit, setAudit] = useState<any[]>([]);
+  const chatIdAudit = typeof window !== "undefined" ? localStorage.getItem("quartly_chatId") || "default" : "default";
+  const refreshAudit = async () => {
+    try { const r = await fetch(`/api/dashboard/audit/history?chatId=${chatIdAudit}`); const j = await r.json(); if (j.ok) setAudit(j.history); } catch {}
+  };
+  useEffect(() => { refreshAudit(); }, [movements.length, chatIdAudit]);
+  // poll cada 30s para reflejar chatbot
+  useEffect(() => { const id = setInterval(refreshAudit, 30000); return () => clearInterval(id); }, [chatIdAudit]);
 
   const handleSubmit = async () => {
     if (!form.ticker || !form.amount || !form.date) return;
@@ -74,7 +82,9 @@ export default function PortfolioAnalyticsPage() {
       price: Number(form.price || form.amount),
       date: form.date,
       notes: form.notes,
-    });
+      where: "portfolio-analytics",
+      method: "manual",
+    } as any);
     setForm({ type: "buy", ticker: "", amount: "", quantity: "1", price: "", date: new Date().toISOString().split("T")[0], notes: "" });
     setShowForm(false);
   };
@@ -584,6 +594,39 @@ export default function PortfolioAnalyticsPage() {
             </div>
           </Card>
         )}
+      </Column>
+
+      {/* ── Audit History (append-only KV, nunca se borra) ── */}
+      <Column gap="s">
+        <Row vertical="center" horizontal="between">
+          <Heading variant="heading-strong-m">Auditoría — Historial de Cambios</Heading>
+          <Text variant="label-default-xs" onBackground="neutral-weak">{audit.length} registros · append-only KV</Text>
+        </Row>
+        <Card padding="s" radius="m" fillWidth>
+          <div style={{ overflowX: "auto", maxHeight: 380, overflowY: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem" }}>
+              <thead style={{ position: "sticky", top: 0, background: "var(--neutral-background)", zIndex: 1 }}>
+                <tr style={{ borderBottom: "1px solid var(--neutral-alpha-medium)" }}>
+                  {["Fecha y hora", "Cambio / Dónde", "Método", "SO / Navegador"].map((h) => (
+                    <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "var(--neutral-on-background-weak)", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {audit.length === 0 ? (
+                  <tr><td colSpan={4} style={{ padding: "16px", textAlign: "center", color: "var(--neutral-on-background-weak)" }}>Sin auditoría aún — los cambios manuales y del chatbot se registrarán aquí y nunca se eliminarán.</td></tr>
+                ) : audit.slice(0, 200).map((a) => (
+                  <tr key={a.id} style={{ borderBottom: "1px solid var(--neutral-alpha-weak)" }}>
+                    <td style={{ padding: "8px 10px", whiteSpace: "nowrap" }}>{a.dateTime}<br/><span style={{ color:"var(--neutral-on-background-weak)", fontSize:"0.72rem"}}>{a.timestamp.slice(0,10)}</span></td>
+                    <td style={{ padding: "8px 10px", maxWidth: 320 }}><span style={{ fontWeight:600 }}>{a.change}</span><br/><span style={{ color:"var(--neutral-on-background-weak)" }}>{a.where}</span></td>
+                    <td style={{ padding: "8px 10px" }}><Badge textVariant="label-default-xs" color={a.method==="chatbot"?"brand":"neutral"}>{a.method==="chatbot"?"🤖 chatbot":"👤 manual"}</Badge></td>
+                    <td style={{ padding: "8px 10px", whiteSpace:"nowrap" }}>{a.os} / {a.browser}<br/><span style={{ color:"var(--neutral-on-background-weak)", fontSize:"0.7rem", maxWidth:160, overflow:"hidden", textOverflow:"ellipsis", display:"inline-block"}} title={a.userAgent}>{a.userAgent.slice(0,60)}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       </Column>
     </Column>
   );
