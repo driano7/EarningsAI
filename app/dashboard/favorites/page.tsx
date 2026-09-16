@@ -86,6 +86,7 @@ interface StockDetail {
   quote: QuoteData | null;
   sparkline: number[];
   nextEarnings: CalendarEarning | null;
+  per: number | null;
 }
 
 interface EtfDetail {
@@ -93,6 +94,7 @@ interface EtfDetail {
   logo: string | null;
   quote: QuoteData | null;
   sparkline: number[];
+  per: number | null;
 }
 
 interface CryptoDetail {
@@ -543,10 +545,11 @@ export default function FavoritesPage() {
                           </Text>
                         )}
                         <Text variant="label-default-xs" onBackground="neutral-weak">{e.sector || "—"}</Text>
-                        {typeof detail?.per === "number" && (
+                        {detail && (
                           <Row gap="xs" vertical="center">
                             <Text variant="label-default-xs" onBackground="neutral-weak">📊 PER:</Text>
-                            <Badge textVariant="label-default-xs" color={detail.per < 15 ? "success" : detail.per > 25 ? "danger" : "neutral"}>{detail.per.toFixed(2)}</Badge>
+                            <Badge textVariant="label-default-xs" color={typeof detail.per === "number" ? (detail.per < 15 ? "success" : detail.per > 25 ? "danger" : "neutral") : "neutral"}>{typeof detail.per === "number" ? detail.per.toFixed(2) : "—"}</Badge>
+                            <Text variant="label-default-xs" onBackground="neutral-weak">· TTM</Text>
                           </Row>
                         )}
                         {detail?.sparkline && detail.sparkline.length > 1 && (
@@ -614,23 +617,22 @@ export default function FavoritesPage() {
                       </Row>
                     )}
 
-                    {typeof detail?.per === "number" && (
-                      <Row gap="xs" vertical="center">
-                        <Text variant="label-default-xs" onBackground="neutral-weak">📊 PER:</Text>
-                        <Badge textVariant="label-default-xs" color={detail.per < 15 ? "success" : detail.per > 25 ? "danger" : "neutral"}>
-                          {detail.per.toFixed(2)}
-                        </Badge>
-                        <Text variant="label-default-xs" onBackground="neutral-weak">· TTM</Text>
-                      </Row>
-                    )}
-
-                    {detail?.nextEarnings && (
-                      <Row gap="xs" vertical="center">
-                        <Text variant="label-default-xs" onBackground="neutral-weak">📅 Proximo reporte:</Text>
-                        <Text variant="label-default-xs" onBackground="brand-medium">
-                          {detail.nextEarnings.date}{detail.nextEarnings.hour ? ` (${detail.nextEarnings.hour === "amc" ? "After Close" : "Before Open"})` : ""}
-                        </Text>
-                      </Row>
+                    {detail && (
+                      <>
+                        <Row gap="xs" vertical="center">
+                          <Text variant="label-default-xs" onBackground="neutral-weak">📊 PER:</Text>
+                          <Badge textVariant="label-default-xs" color={typeof detail.per === "number" ? (detail.per < 15 ? "success" : detail.per > 25 ? "danger" : "neutral") : "neutral"}>
+                            {typeof detail.per === "number" ? detail.per.toFixed(2) : "—"}
+                          </Badge>
+                          <Text variant="label-default-xs" onBackground="neutral-weak">· TTM</Text>
+                        </Row>
+                        <Row gap="xs" vertical="center">
+                          <Text variant="label-default-xs" onBackground="neutral-weak">📅 Próximo reporte:</Text>
+                          <Text variant="label-default-xs" onBackground={detail.nextEarnings ? "brand-medium" : "neutral-weak"}>
+                            {detail.nextEarnings ? `${detail.nextEarnings.date}${detail.nextEarnings.hour ? ` (${detail.nextEarnings.hour === "amc" ? "After Close" : "Before Open"})` : ""}` : "Sin fecha"}
+                          </Text>
+                        </Row>
+                      </>
                     )}
 
                     {earningsLoading && (

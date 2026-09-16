@@ -180,8 +180,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </nav>
           )}
 
-          {/* Right side */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          {/* Right side - solo mobile a la derecha */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginLeft: isMobile ? "auto" : undefined, justifyContent: isMobile ? "flex-end" : undefined }}>
             <AnimatedThemeToggle />
             <button
               onClick={handleLogout}
