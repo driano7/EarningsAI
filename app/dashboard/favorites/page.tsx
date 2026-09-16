@@ -543,6 +543,12 @@ export default function FavoritesPage() {
                           </Text>
                         )}
                         <Text variant="label-default-xs" onBackground="neutral-weak">{e.sector || "—"}</Text>
+                        {typeof detail?.per === "number" && (
+                          <Row gap="xs" vertical="center">
+                            <Text variant="label-default-xs" onBackground="neutral-weak">📊 PER:</Text>
+                            <Badge textVariant="label-default-xs" color={detail.per < 15 ? "success" : detail.per > 25 ? "danger" : "neutral"}>{detail.per.toFixed(2)}</Badge>
+                          </Row>
+                        )}
                         {detail?.sparkline && detail.sparkline.length > 1 && (
                           <Sparkline data={detail.sparkline} color={getChartLineColor(detail.quote?.d ?? null)} />
                         )}
@@ -605,6 +611,16 @@ export default function FavoritesPage() {
                       <Row gap="xs" vertical="center">
                         <Text variant="label-default-xs" onBackground="neutral-weak">🎯 Analistas:</Text>
                         <Text variant="label-default-xs">{formatAnalystSignal(detail.analystSignals)}</Text>
+                      </Row>
+                    )}
+
+                    {typeof detail?.per === "number" && (
+                      <Row gap="xs" vertical="center">
+                        <Text variant="label-default-xs" onBackground="neutral-weak">📊 PER:</Text>
+                        <Badge textVariant="label-default-xs" color={detail.per < 15 ? "success" : detail.per > 25 ? "danger" : "neutral"}>
+                          {detail.per.toFixed(2)}
+                        </Badge>
+                        <Text variant="label-default-xs" onBackground="neutral-weak">· TTM</Text>
                       </Row>
                     )}
 

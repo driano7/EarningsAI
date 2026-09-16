@@ -12,6 +12,7 @@ import type { EarningEvent, RecommendationTrend, QuoteData, CalendarEarning } fr
 import { getLogoUrl } from "@/lib/logo";
 import { getCMCQuote, isCMCEnabled } from "@/lib/coinmarketcap";
 import { isTwelveDataEnabled, getSparkline } from "@/lib/twelvedata";
+import { getPER } from "@/lib/per";
 
 interface StockDetail {
   ticker: string;
@@ -21,6 +22,7 @@ interface StockDetail {
   quote: QuoteData | null;
   sparkline: number[];
   nextEarnings: CalendarEarning | null;
+  per: number | null;
 }
 
 interface EtfDetail {
@@ -28,6 +30,7 @@ interface EtfDetail {
   logo: string | null;
   quote: QuoteData | null;
   sparkline: number[];
+  per: number | null;
 }
 
 interface CryptoDetail {
@@ -53,6 +56,7 @@ async function sequential<T, R>(items: T[], delay: number, fn: (item: T, i: numb
 async function fetchStockDetail(ticker: string): Promise<StockDetail> {
   const cached = await getCachedTickerData(ticker);
   if (cached && cached.sparkline && cached.sparkline.length > 1) {
+    const per = await getPER(ticker).catch(()=>null);
     return {
       ticker,
       logo: cached.logo,
@@ -61,6 +65,7 @@ async function fetchStockDetail(ticker: string): Promise<StockDetail> {
       quote: cached.quote as QuoteData | null,
       sparkline: cached.sparkline,
       nextEarnings: null,
+      per,
     };
   }
 
@@ -75,20 +80,21 @@ async function fetchStockDetail(ticker: string): Promise<StockDetail> {
     sparkline = await getSparkline(ticker, 30);
   }
 
-  const [earnings, signals, quote, logo, candles, calendar] = await Promise.all([
+  const [earnings, signals, quote, logo, candles, calendar, per] = await Promise.all([
     getEarningsHistory(ticker),
     getRecommendationTrends(ticker),
     getQuote(ticker),
     getLogoUrl(ticker, false),
     sparkline.length === 0 ? getCandles(ticker) : Promise.resolve(null),
     getEarningsCalendar(from, to, ticker),
+    getPER(ticker),
   ]);
 
   if (sparkline.length === 0 && candles?.closes) {
     sparkline = candles.closes.slice(-30);
   }
   const nextEarnings = calendar.length > 0 ? calendar[0] : null;
-  const detail: StockDetail = { ticker, logo, earnings, analystSignals: signals, quote, sparkline, nextEarnings };
+  const detail: StockDetail = { ticker, logo, earnings, analystSignals: signals, quote, sparkline, nextEarnings, per };
   if (sparkline.length > 1) {
     await setCachedTickerData(ticker, {
       logo,
@@ -104,20 +110,23 @@ async function fetchStockDetail(ticker: string): Promise<StockDetail> {
 async function fetchEtfDetail(ticker: string): Promise<EtfDetail> {
   const cached = await getCachedTickerData(ticker);
   if (cached && cached.sparkline && cached.sparkline.length > 1) {
+    const per = await getPER(ticker).catch(()=>null);
     return {
       ticker,
       logo: cached.logo,
       quote: cached.quote as QuoteData | null,
       sparkline: cached.sparkline,
+      per,
     };
   }
-  const [quote, logo, candles] = await Promise.all([
+  const [quote, logo, candles, per] = await Promise.all([
     getQuote(ticker),
     getLogoUrl(ticker, true),
     getCandles(ticker),
+    getPER(ticker),
   ]);
   const sparkline = candles?.closes?.slice(-30) || [];
-  const detail: EtfDetail = { ticker, logo, quote, sparkline };
+  const detail: EtfDetail = { ticker, logo, quote, sparkline, per };
   if (sparkline.length > 1) {
     await setCachedTickerData(ticker, {
       logo,

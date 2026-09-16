@@ -17,6 +17,7 @@ import {
   formatEPSBlock,
   formatAnalystSignal,
 } from "../lib/finnhub";
+import { getPER } from "../lib/per";
 import { getLogoUrl } from "../lib/logo";
 import { sendMessageWithLogo, sendMessage, answerInlineQuery } from "../lib/telegram";
 import { checkAndConsumeQuota, getQuotaExceededMessage, getRemainingQuota } from "../lib/quota";
@@ -381,12 +382,22 @@ async function handleMyStocks(chatId: string) {
   }
 
   let msg = "📋 *Tus acciones:*\n\n";
-  for (const ticker of stocks) {
+  // Fetch PER + next earnings in parallel
+  const enriched = await Promise.all(stocks.map(async (ticker) => {
+    const [per, cal] = await Promise.all([
+      getPER(ticker).catch(()=>null),
+      getEarningsCalendar(new Date().toISOString().split("T")[0], new Date(Date.now()+90*864e5).toISOString().split("T")[0], ticker).catch(()=>[]),
+    ]);
+    return { ticker, per, next: cal[0] || null };
+  }));
+  for (const { ticker, per, next } of enriched) {
     const company = SP500.find((c) => c.ticker === ticker);
     const custom = CUSTOM_TICKERS.find((c) => c.ticker === ticker);
     const name = company ? company.name : custom ? custom.name : ticker;
     const sector = company ? company.sector : custom ? custom.sector : "";
-    msg += `• *${ticker}* — ${name} (${sector})\n`;
+    const perStr = typeof per === "number" ? `PER ${per.toFixed(1)}` : "PER —";
+    const earnStr = next ? `📅 ${next.date}${next.hour?` (${next.hour})`:""}` : "📅 s/fecha";
+    msg += `• *${ticker}* — ${name} (${sector})\n  ${perStr} · ${earnStr}\n`;
   }
 
   const buttons: Array<Array<{ text: string; callback_data: string }>> = [];
@@ -414,11 +425,20 @@ async function handleMyEtfs(chatId: string) {
   }
 
   let msg = "📋 *Tus ETFs:*\n\n";
-  for (const ticker of etfs) {
+  const enriched = await Promise.all(etfs.map(async (ticker) => {
+    const [per, cal] = await Promise.all([
+      getPER(ticker).catch(()=>null),
+      getEarningsCalendar(new Date().toISOString().split("T")[0], new Date(Date.now()+90*864e5).toISOString().split("T")[0], ticker).catch(()=>[]),
+    ]);
+    return { ticker, per, next: cal[0] || null };
+  }));
+  for (const { ticker, per, next } of enriched) {
     const etf = ETFS.find((e) => e.ticker === ticker);
     const name = etf ? etf.name : ticker;
     const category = etf ? etf.category : "";
-    msg += `• *${ticker}* — ${name} (${category})\n`;
+    const perStr = typeof per === "number" ? `PER ${per.toFixed(1)}` : "PER —";
+    const earnStr = next ? `📅 ${next.date}` : "📅 s/fecha";
+    msg += `• *${ticker}* — ${name} (${category})\n  ${perStr} · ${earnStr}\n`;
   }
 
   const buttons: Array<Array<{ text: string; callback_data: string }>> = [];
