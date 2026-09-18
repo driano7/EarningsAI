@@ -53,10 +53,44 @@ async function sequential<T, R>(items: T[], delay: number, fn: (item: T, i: numb
   return results;
 }
 
+function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]).catch(() => fallback);
+}
+
 async function fetchStockDetail(ticker: string): Promise<StockDetail> {
-  const cached = await getCachedTickerData(ticker);
+  const cached = await getCachedTickerData(ticker).catch(() => null);
+  const today = new Date();
+  const from = today.toISOString().split("T")[0];
+  const futureDate = new Date(today.getTime() + 90 * 24 * 60 * 60 * 1000);
+  const to = futureDate.toISOString().split("T")[0];
+
   if (cached && cached.sparkline && cached.sparkline.length > 1) {
-    const per = await getPER(ticker).catch(()=>null);
+    // Cache hit: reutilizar per/nextEarnings guardados; si faltan, fetch rápido con timeout sin bloquear
+    let per: number | null = cached.per ?? null;
+    let nextEarnings: CalendarEarning | null = (cached.nextEarnings as CalendarEarning | undefined) ?? null;
+    if (per === null || nextEarnings === null) {
+      const [freshPer, cal] = await Promise.all([
+        per === null ? withTimeout(getPER(ticker), 4000, null) : Promise.resolve(per),
+        nextEarnings === null ? withTimeout(getEarningsCalendar(from, to, ticker), 5000, [] as CalendarEarning[]) : Promise.resolve(nextEarnings ? [nextEarnings] : []),
+      ]);
+      per = freshPer;
+      if (!nextEarnings && cal.length > 0) {
+        nextEarnings = cal[0];
+        // guardar en caché para la próxima
+        await setCachedTickerData(ticker, {
+          logo: cached.logo,
+          earnings: cached.earnings,
+          analystSignals: cached.analystSignals,
+          quote: cached.quote,
+          sparkline: cached.sparkline,
+          per,
+          nextEarnings: nextEarnings ? { date: (nextEarnings as any).date, hour: (nextEarnings as any).hour, estimate: (nextEarnings as any).estimate } : null,
+        }).catch(() => {});
+      }
+    }
     return {
       ticker,
       logo: cached.logo,
@@ -64,30 +98,25 @@ async function fetchStockDetail(ticker: string): Promise<StockDetail> {
       analystSignals: cached.analystSignals as RecommendationTrend[],
       quote: cached.quote as QuoteData | null,
       sparkline: cached.sparkline,
-      nextEarnings: null,
+      nextEarnings,
       per,
     };
   }
 
-  const today = new Date();
-  const from = today.toISOString().split("T")[0];
-  const futureDate = new Date(today.getTime() + 90 * 24 * 60 * 60 * 1000);
-  const to = futureDate.toISOString().split("T")[0];
-
   let sparkline: number[] = [];
 
   if (isTwelveDataEnabled()) {
-    sparkline = await getSparkline(ticker, 30);
+    sparkline = await getSparkline(ticker, 30).catch(() => []);
   }
 
   const [earnings, signals, quote, logo, candles, calendar, per] = await Promise.all([
-    getEarningsHistory(ticker),
-    getRecommendationTrends(ticker),
-    getQuote(ticker),
-    getLogoUrl(ticker, false),
-    sparkline.length === 0 ? getCandles(ticker) : Promise.resolve(null),
-    getEarningsCalendar(from, to, ticker),
-    getPER(ticker),
+    getEarningsHistory(ticker).catch(() => []),
+    getRecommendationTrends(ticker).catch(() => []),
+    getQuote(ticker).catch(() => null),
+    getLogoUrl(ticker, false).catch(() => null),
+    sparkline.length === 0 ? getCandles(ticker).catch(() => null) : Promise.resolve(null),
+    withTimeout(getEarningsCalendar(from, to, ticker), 6000, [] as CalendarEarning[]),
+    withTimeout(getPER(ticker), 5000, null),
   ]);
 
   if (sparkline.length === 0 && candles?.closes) {
@@ -102,15 +131,17 @@ async function fetchStockDetail(ticker: string): Promise<StockDetail> {
       analystSignals: signals as CachedTickerEarnings["analystSignals"],
       quote: quote as CachedTickerEarnings["quote"],
       sparkline,
-    });
+      per,
+      nextEarnings: nextEarnings ? { date: (nextEarnings as any).date, hour: (nextEarnings as any).hour, estimate: (nextEarnings as any).estimate } : null,
+    }).catch(() => {});
   }
   return detail;
 }
 
 async function fetchEtfDetail(ticker: string): Promise<EtfDetail> {
-  const cached = await getCachedTickerData(ticker);
+  const cached = await getCachedTickerData(ticker).catch(() => null);
   if (cached && cached.sparkline && cached.sparkline.length > 1) {
-    const per = await getPER(ticker).catch(()=>null);
+    const per = cached.per ?? await withTimeout(getPER(ticker), 4000, null);
     return {
       ticker,
       logo: cached.logo,
@@ -120,10 +151,10 @@ async function fetchEtfDetail(ticker: string): Promise<EtfDetail> {
     };
   }
   const [quote, logo, candles, per] = await Promise.all([
-    getQuote(ticker),
-    getLogoUrl(ticker, true),
-    getCandles(ticker),
-    getPER(ticker),
+    getQuote(ticker).catch(() => null),
+    getLogoUrl(ticker, true).catch(() => null),
+    getCandles(ticker).catch(() => null),
+    withTimeout(getPER(ticker), 5000, null),
   ]);
   const sparkline = candles?.closes?.slice(-30) || [];
   const detail: EtfDetail = { ticker, logo, quote, sparkline, per };
@@ -134,10 +165,14 @@ async function fetchEtfDetail(ticker: string): Promise<EtfDetail> {
       analystSignals: [] as CachedTickerEarnings["analystSignals"],
       quote: quote as CachedTickerEarnings["quote"],
       sparkline,
-    });
+      per,
+    }).catch(() => {});
   }
   return detail;
 }
+
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   const chatId = req.nextUrl.searchParams.get("chatId");

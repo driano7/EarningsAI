@@ -12,8 +12,9 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     return res.status(500).json({ error: "TELEGRAM_BOT_TOKEN not set" });
   }
 
-  const domain = process.env.VERCEL_URL || "quartly.vercel.app";
-  const webhookUrl = `https://${domain}/api/webhook`;
+  // Usar dominio de producción, NO VERCEL_URL (ese cambia por deployment y mata el bot en cada deploy)
+  const prodUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://earnings-ai-one.vercel.app").replace(/\/$/, "");
+  const webhookUrl = `${prodUrl}/api/webhook`;
 
   const setRes = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
     method: "POST",
@@ -49,5 +50,5 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
 
   const commandsData = await commandsRes.json();
 
-  return res.status(200).json({ webhook: webhookData, commands: commandsData });
+  return res.status(200).json({ webhook: webhookData, commands: commandsData, webhookUrl, timestamp: new Date().toISOString() });
 }

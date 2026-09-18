@@ -230,6 +230,8 @@ export interface CachedTickerEarnings {
     c: number; d: number; dp: number; h: number; l: number; o: number; pc: number; t: number;
   } | null;
   sparkline: number[];
+  per?: number | null;
+  nextEarnings?: { date: string; hour?: string; estimate: number } | null;
   fetchedAt: number;
 }
 
